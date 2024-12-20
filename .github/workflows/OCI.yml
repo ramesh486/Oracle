@@ -1,0 +1,52 @@
+name: Repository Dispatch Workflow
+
+# Triggered by the repository_dispatch event
+on:
+  repository_dispatch:
+    types: [hello_event] # Custom event type
+
+permissions:
+  contents: write
+
+jobs:
+  say-hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4    
+        
+      - name: Respond to Repository Dispatch
+        run: echo "Hello,${{ github.event.client_payload.name }}!"
+
+      - name: Create JSON file from payload
+        run: |
+          sanitized_name=$(echo "${{ github.event.client_payload.name }}" | tr ' ' '_')
+          echo '${{ toJSON(github.event.client_payload) }}' > ${sanitized_name}.json
+          
+      - name: Commit and push
+        run: |
+          git config user.email "suriyaramesh486@gmail.com"
+          git config user.name "rameshkrishnan03"
+          sanitized_name=$(echo "${{ github.event.client_payload.name }}" | tr ' ' '_')
+          git add ${sanitized_name}.json
+          git commit -m "Save client payload data for ${{ github.event.client_payload.name }}"
+          git push origin development
+
+  create-vcn:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4    
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install OCI SDK
+        run: pip install oci
+
+      - name: Run OCI SDK script
+        env: 
+          OCI_CONFIG_FILE: ${{ secrets.OCI_CONFIG_FILE }} # Encrypted secret for OCI config
+        run: python create_vcn.py
