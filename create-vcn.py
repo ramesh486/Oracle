@@ -1,6 +1,8 @@
 import oci
+import os
 
-config = oci.config.from_file("~/.oci/config", "DEFAULT")  
+oci_config_file = os.getenv('OCI_CONFIG_FILE')
+config = oci.config.from_file(oci_config_file, "DEFAULT")
 
 virtual_network_client = oci.core.VirtualNetworkClient(config) 
 
