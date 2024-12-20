@@ -30,7 +30,7 @@ jobs:
           sanitized_name=$(echo "${{ github.event.client_payload.name }}" | tr ' ' '_')
           git add ${sanitized_name}.json
           git commit -m "Save client payload data for ${{ github.event.client_payload.name }}"
-          git push origin development
+          git push origin Data
 
   create-vcn:
     runs-on: ubuntu-latest
