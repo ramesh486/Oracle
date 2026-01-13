@@ -11,11 +11,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
-      - name: Create tar.gz of Terraform files
-        run: |
-          tar -czf terraform-config.tar.gz *.tf
-          echo "Created terraform-config.tar.gz"
-          ls -lh terraform-config.tar.gz
+      # - name: Create tar.gz of Terraform files
+      #   run: |
+      #     tar -czf terraform-config.tar.gz *.tf
+      #     echo "Created terraform-config.tar.gz"
+      #     ls -lh terraform-config.tar.gz
       
       - name: Get Workspace ID
         id: workspace
