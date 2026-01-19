@@ -1,6 +1,6 @@
 terraform {
   cloud {
-    organization = "suriyaramesh486-org"
+    organization = "iyaramesh486-org"
 
     workspaces {
       name = "Oracle-ws"
