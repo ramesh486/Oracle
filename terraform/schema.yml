@@ -1,0 +1,57 @@
+title: DRG Terraform Input Variables
+description: Dynamic Routing Gateway(DRG) Terraform Variables
+schemaVersion: 1.1.0
+version: "26042023"
+
+### Variable Groupings ###
+
+groupings:
+
+  - title: "Hub DRG Configuration"
+    variables:
+      - ${region}
+      - ${tenancy_ocid}
+      - ${network_drg_display_name}
+      - ${compartment_name}
+      - ${project_tag}
+
+variables:
+
+### Common Variables ###
+
+  region:
+    visible: true
+    title: Region
+    description: "Region(us-ashburn-1) to deploy the DRG"
+
+  tenancy_ocid:
+    visible: true
+    title: Tenancy OCID
+    description: "Tenancy to deploy the DRG"
+
+  network_drg_display_name:
+    type: string
+    title: "Name of the DRG name"
+    required: true
+    visible: true
+
+  compartment_name:
+    type: string
+    title: "Target Compartment Name to deploy the DRG"
+    required: true
+    visible: true 
+
+  compartment_id_in_subtree:
+    type: string
+    title: "Compartment ID in Subtree"
+    required: false
+    visible: false      
+
+  project_tag:
+    type: oci:identity:tag:value
+    title: Attach Tags
+    description: Attach the Tags
+    visible: true
+    required: false
+
+### END
