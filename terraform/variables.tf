@@ -45,7 +45,7 @@ variable "compartment_id_in_subtree" {
 ###  DRG Variables ### 
 
 variable "network_drg_display_name" {
-    default = "qco_ua1_dr_drg"
+    default = "qco_dr_drg"
     type = string
     description = "Name of the DRG"
 }
