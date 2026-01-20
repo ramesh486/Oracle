@@ -3,7 +3,7 @@ terraform {
     organization = "suriyaramesh486-org"
 
     workspaces {
-      name = "Oracle-ws"
+      name = "Oracle"
     }
   }
 }
