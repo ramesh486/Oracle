@@ -1,8 +1,8 @@
 terraform {
   cloud {
-    organization = "quantaservices"
+    organization = "suriyaramesh486-org"
     workspaces {
-      name = "qco-oci-platform-landingzone-iam-compartments"
+      name = "Oracle"
     }
   }
 }
