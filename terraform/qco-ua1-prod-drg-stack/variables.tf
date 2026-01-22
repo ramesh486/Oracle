@@ -25,7 +25,7 @@ variable "fingerprint"{
     description = "fingerprint to deploy the DRG"    
 }
 
-variable "private_key"{
+variable "api_private_key"{
     type = string
     default =  ""
     description = "private key to deploy the DRG"    
