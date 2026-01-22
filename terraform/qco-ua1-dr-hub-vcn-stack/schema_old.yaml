@@ -1,0 +1,114 @@
+title: OCI Prod HUB VCN Terraform Input Variables
+description:  OCI Prod HUB VCN Variables
+schemaVersion: 1.1.0
+version: "21022023"
+
+#####################################
+
+# VCN Variables
+
+#####################################
+
+groupings:
+
+  - title: "OCI Network VCN Variables"
+    variables:
+      - ${vcn_prod_hub_jde_uas2_display_name}
+      - ${vcn_prod_hub_jde_uas2_dns_label}
+      - ${vcn_prod_hub_jde_uas2_cidr_block}
+    
+
+
+  - title: "OCI Network HA Public Subnet Configuration"
+    variables:
+      - ${prod_ha_private_subnet_display_name}
+      - ${prod_ha_private_subnet_dns_label}
+      - ${prod_ha_private_subnet_cidr_block}
+      - ${prod_ha_private_subnet_prohibit_internet_ingress}
+      - ${prod_ha_private_subnet_prohibit_public_ip_on_vnic}
+  
+
+  - title: "OCI Network Untrust Subnet Configuration"
+    variables:
+      - ${prod_untrust_subnet_display_name}
+      - ${prod_untrust_subnet_dns_label}
+      - ${prod_untrust_subnet_cidr_block}
+      - ${prod_untrust_subnet_prohibit_internet_ingress}
+      - ${prod_untrust_subnet_prohibit_public_ip_on_vnic}
+
+
+  - title: "OCI Network Management Subnet Configuration"
+    variables:
+      - ${prod_management_subnet_display_name}
+      - ${prod_management_subnet_dns_label}
+      - ${prod_management_subnet_cidr_block}
+      - ${prod_management_subnet_prohibit_internet_ingress}
+      - ${prod_management_subnet_prohibit_public_ip_on_vnic}
+  
+  - title: "OCI Network Trust Subnet Configuration"
+    variables:
+      - ${prod_trust_subnet_display_name}
+      - ${prod_trust_subnet_dns_label}
+      - ${prod_trust_subnet_cidr_block}
+      - ${prod_trust_subnet_prohibit_internet_ingress}
+      - ${prod_trust_subnet_prohibit_public_ip_on_vnic}
+
+
+
+  - title: "OCI Network VCN Components"
+    variables:
+      - ${vcn_prod_hub_jde_uas2_servicegateway_private_display_name}
+      - ${vcn_prod_hub_jde_uas2_natgateway_display_name}
+      - ${vcn_prod_hub_jde_uas2_natgateway_block_traffic}
+      - ${vcn_prod_hub_jde_uas2_natgateway_public_ip_lifetime}
+
+
+  - title: "OCI Network VCN Route Table Configuration"
+    variables:
+      - ${vcn_prod_hub_jde_uas2_routetable_untrust_display_name}
+      - ${vcn_prod_hub_jde_uas2_routetable_private_management_display_name}
+      - ${vcn_prod_hub_jde_uas2_routetable_private_trust_display_name}
+      - ${vcn_prod_hub_jde_uas2_routetable_private_ha_display_name}
+
+  - title: "OCI VCN Security List Configuration"
+    variables:
+      - ${vcn_prod_hub_jde_uas2_seclist_private_display_name}
+      - ${vcn_prod_hub_jde_uas2_seclist_private_is_stateless}
+
+  - title: "DRG Attachment Configuration"
+    variables:
+      - ${prod_drg_ocid}
+      - ${vcn_prod_hub_jde_uas2_drg_attachment_display_name}
+
+      
+
+  - title: "Select the target compartment to create the resources"
+    variables:
+      - ${compartment_name}
+      - ${tenancy_ocid}
+      - ${region}
+
+variables:
+
+#####################################
+
+# Common Compartment
+
+#####################################
+
+  tenancy_ocid:
+    visible: false
+    title: Tenancy OCID
+    description: Tenancy OCID
+
+  region:
+    visible: true
+    title: Region
+    description: Region
+
+  project_tag:
+    type: oci:identity:tag:value
+    title: Attach Tags
+    description: Attach the Tags
+    visible: true
+    required: false
