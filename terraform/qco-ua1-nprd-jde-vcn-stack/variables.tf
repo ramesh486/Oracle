@@ -68,7 +68,7 @@ variable "project_tag" {
 variable "nprd_vcn_display_name" {
   type        = string
   description = "NonProd VCN Display Name"
-  default     = "qco-ua1-nprd-jde-vcn"
+  default     = "qco-ua1-nprd-jde-vcn-01"
 }
 
 variable "nprd_vcn_dns_label" {
