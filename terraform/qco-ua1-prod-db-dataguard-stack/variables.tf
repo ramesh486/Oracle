@@ -9,7 +9,7 @@ default        = ""
 variable "region" {
 type            = string
 description     = "Region"
-default         = ""
+default         = "us-ashburn-1"
 }
 
 variable "user_ocid" {
