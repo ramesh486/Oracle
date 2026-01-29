@@ -30,7 +30,7 @@ variable "api_private_key" {
 
 variable "compartment_id_in_subtree" {
     type        = bool
-    default     = true
+    default     = false
     description = "Compartment ID in Subtree"
 }
 
@@ -42,7 +42,7 @@ variable "compartment_name" {
 
 variable "network_compartment_id_in_subtree" {
     type         = bool
-    default      = true
+    default      = false
     description  = "Compartment ID in Subtree"
 }
 
