@@ -121,7 +121,7 @@ variable "primary_dbs_hostname" {
 
 variable "primary_dbs_display_name" {
   type        = string
-  default     = "qco-db-prod-dataguard"
+  default     = "qco-db-prod-dataguard1"
   description = "Primary DB System Display Name"
 }
 
