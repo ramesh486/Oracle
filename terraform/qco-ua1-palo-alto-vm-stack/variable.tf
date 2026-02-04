@@ -245,7 +245,7 @@ variable "are_legacy_imds_endpoints_disabled" {
 variable "display_name" {
   type        = string
   description = "display name"
-  default     = "qco-palo-alto-vm"
+  default     = "qco-ua1-palo-alto-vm"
 }
 
 variable "shape" {
