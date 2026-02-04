@@ -1,0 +1,5 @@
+# The Palo Alto Networks VM-Series is a virtualized next-generation firewall that can be deployed in cloud environments, including Oracle Cloud Infrastructure (OCI). It provides advanced security features and capabilities to protect workloads and applications in the cloud.
+# When deployed in OCI, the Palo Alto Networks VM-Series acts as a virtual firewall that inspects and controls network traffic, enforcing security policies based on application, user, and content identification. It offers features such as intrusion prevention, URL filtering, antivirus scanning, SSL decryption, and application-level visibility and control
+
+# Prerequisites:
+	SSH KEY
