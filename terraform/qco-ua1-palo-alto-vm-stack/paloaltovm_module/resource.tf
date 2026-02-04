@@ -48,7 +48,7 @@ resource "oci_core_instance" "generated_oci_core_instance" {
 	}
 	
     metadata  = {
-    ssh_authorized_keys = var.ssh_authorized_keys
+    ssh_authorized_keys = var.ssh_keys
   }
 
   

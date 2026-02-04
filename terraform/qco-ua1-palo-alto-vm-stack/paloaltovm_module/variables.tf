@@ -5,7 +5,7 @@ variable "compartment_ocid" { }
 variable "subnet_ocid" { }
 variable "is_management_disabled" { }
 variable "is_monitoring_disabled" { }
-variable "ssh_authorized_keys" { }
+variable "ssh_keys" { }
 variable "desired_state1" { }
 variable "name1" { }
 variable "desired_state2" { }

@@ -36,7 +36,7 @@ module "paloaltovm" {
 		name10 = var.name10
 
     
-    ssh_authorized_keys = var.ssh_authorized_keys
+    ssh_authorized_keys = var.ssh_keys
 	recovery_action = var.recovery_action
 	
 	assign_private_dns_record = var.assign_private_dns_record
