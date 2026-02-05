@@ -58,48 +58,30 @@ module "paloaltovm" {
 
 module "untrust_vnic" {
         source                 = "./untrustvnic_module"
-	    region                 = var.region
-		tenancy_ocid           = var.tenancy_ocid
-	    compartment_ocid       = local.app_compartment_ocid
 		untrst_subnet_ocid     = local.untrst_subnet_ocid
-		instance_id            = module.paloaltovm.instance_id
 		untrust_vnic_display_name  = var.untrst_vnic_display_name
-		project_tag            = var.project_tag
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
 		assign_public_ip_secondary = var.assign_public_ip_secondary
 		skip_source_dest_check = var.skip_source_dest_check
-		nic_index           = var.untrust_nic_index
 
 }
 
 module "trust_vnic" {
         source                 = "./trustvnic_module"
-	    region                 = var.region
-		tenancy_ocid           = var.tenancy_ocid
-	    compartment_ocid       = local.app_compartment_ocid
 		trust_subnet_ocid       = local.trust_subnet_ocid
-		instance_id            = module.paloaltovm.instance_id
 		trust_vnic_display_name = var.trust_vnic_display_name
-		project_tag            = var.project_tag
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
 		assign_public_ip_secondary = var.assign_public_ip_secondary
 		skip_source_dest_check = var.skip_source_dest_check
-		nic_index           = var.trust_nic_index
 
 }
 
 module "hub_vnic" {
         source                 = "./hubvnic_module"
-	    region                 = var.region
-		tenancy_ocid           = var.tenancy_ocid
-	    compartment_ocid       = local.app_compartment_ocid
 		hub_subnet_ocid        = local.hub_subnet_ocid
-		instance_id            = module.paloaltovm.instance_id
 		hub_vnic_display_name  = var.hub_vnic_display_name
-		project_tag            = var.project_tag
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
 		assign_public_ip_secondary = var.assign_public_ip_secondary
 		skip_source_dest_check = var.skip_source_dest_check
-		nic_index           = var.hub_nic_index
 
 }
