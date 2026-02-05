@@ -3,8 +3,6 @@ variable "tenancy_ocid" { }
 variable "compartment_ocid" { }
 
 variable "mgmt_subnet_ocid" { }
-variable "trust_subnet_ocid" { }
-variable "hub_subnet_ocid" { }
 variable "is_management_disabled" { }
 variable "is_monitoring_disabled" { }
 variable "ssh_keys" { }
