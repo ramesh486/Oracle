@@ -115,124 +115,135 @@ variable "ssh_keys" {
 }
 
 
-variable "desired_state1" {
+variable "vulnerability_scanning_state" {
   type        = string
-  description = "desired_state1"  
- 	default     = "DISABLED" 
+  description = "OCI Vulnerability Scanning desired state"
+  default     = "DISABLED"
 }
 
-variable "name1" {
+variable "vulnerability_scanning_name" {
   type        = string
-  description = "name1"
- 	default     = "Vulnerability Scanning" 
+  description = "OCI Vulnerability Scanning name"
+  default     = "Vulnerability Scanning"
 }
 
-variable "desired_state2" {
+
+variable "java_management_service_state" {
   type        = string
-  description = "desired_state"  
- 	default     = "DISABLED" 
+  description = "Oracle Java Management Service desired state"
+  default     = "DISABLED"
 }
 
-variable "name2" {
+variable "java_management_service_name" {
   type        = string
-  description = "name"
- 	default     = "Oracle Java Management Service" 
+  description = "Oracle Java Management Service name"
+  default     = "Oracle Java Management Service"
 }
 
-variable "desired_state3" {
+
+variable "autonomous_linux_state" {
   type        = string
-  description = "desired_state"  
- 	default     = "DISABLED" 
+  description = "Oracle Autonomous Linux desired state"
+  default     = "DISABLED"
 }
 
-variable "name3" {
+variable "autonomous_linux_name" {
   type        = string
-  description = "name"
- 	default     = "Oracle Autonomous Linux"
+  description = "Oracle Autonomous Linux name"
+  default     = "Oracle Autonomous Linux"
 }
 
-variable "desired_state4" {
+
+variable "os_management_service_state" {
   type        = string
-  description = "desired_state"  
- 	default     = "ENABLED" 
+  description = "OS Management Service Agent desired state"
+  default     = "ENABLED"
 }
 
-variable "name4" {
+variable "os_management_service_name" {
   type        = string
-  description = "name"
-  default     = "OS Management Service Agent" 
+  description = "OS Management Service Agent name"
+  default     = "OS Management Service Agent"
 }
 
-variable "desired_state5" {
+
+variable "management_agent_state" {
   type        = string
-  description = "desired_state"  
- 	default     = "DISABLED" 
+  description = "OCI Management Agent desired state"
+  default     = "DISABLED"
 }
 
-variable "name5" {
+variable "management_agent_name" {
   type        = string
-  description = "name"
- 	default     = "Management Agent" 
+  description = "OCI Management name"
+  default     = "Management Agent"
 }
 
-variable "desired_state6" {
+
+variable "custom_logs_monitoring_state" {
   type        = string
-  description = "desired_state"  
- 	default     = "ENABLED" 
+  description = "Custom Logs Monitoring desired state"
+  default     = "ENABLED"
 }
 
-variable "name6" {
+variable "custom_logs_monitoring_name" {
   type        = string
-  description = "name"
- 	default     = "Custom Logs Monitoring" 
-}
-variable "desired_state7" {
-  type        = string
-  description = "desired_state"  
- 	default     = "ENABLED" 
+  description = "Custom Logs Monitoring name"
+  default     = "Custom Logs Monitoring"
 }
 
-variable "name7" {
+
+variable "run_command_state" {
   type        = string
-  description = "name"
- 	default     = "Compute Instance Run Command" 
+  description = "Compute Instance Run Command desired state"
+  default     = "ENABLED"
 }
 
-variable "desired_state8" {
+variable "run_command_name" {
   type        = string
-  description = "desired_state"  
- 	default     = "ENABLED" 
+  description = "Compute Instance Run Command name"
+  default     = "Compute Instance Run Command"
 }
 
-variable "name8" {
+
+variable "instance_monitoring_state" {
   type        = string
-  description = "name"
- 	default     = "Compute Instance Monitoring" 
+  description = "Compute Instance Monitoring desired state"
+  default     = "ENABLED"
 }
 
-variable "desired_state9" {
+variable "instance_monitoring_name" {
   type        = string
-  description = "desired_state"  
- 	default     = "DISABLED" 
+  description = "Compute Instance Monitoring name"
+  default     = "Compute Instance Monitoring"
 }
 
-variable "name9" {
+
+variable "block_volume_management_state" {
   type        = string
-  description = "name"
- 	default     = "Block Volume Management" 
+  description = "Block Volume Management agent desired state"
+  default     = "DISABLED"
 }
 
-variable "desired_state10" {
+variable "block_volume_management_name" {
   type        = string
-  description = "desired_state"  
- 	default     = "DISABLED" 
+  description = "Block Volume Management name"
+  default     = "Block Volume Management"
 }
 
-variable "name10" {
+
+variable "bastion_state" {
   type        = string
-  description = "name"
- 	default     = "Bastion" 
+  description = "Bastion desired state"
+  default     = "DISABLED"
 }
+
+variable "bastion_name" {
+  type        = string
+  description = "Bastion name"
+  default     = "Bastion"
+}
+
 
 variable "recovery_action" {
   type        = string
@@ -326,3 +337,26 @@ variable "source_type" {
   default     = "image"
 
 }
+
+variable "hub_nic_index" {
+  type        =  number
+  description = "hub vnic nic index"
+  default     = 3
+
+}
+
+variable "trust_nic_index" {
+  type        =  number
+  description = "trust vnic nic index"
+  default     = 2
+
+}
+
+variable "untrust_nic_index" {
+  type        =  number
+  description = "untrust vnic nic index"
+  default     = 1
+
+}
+
+

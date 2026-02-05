@@ -5,44 +5,44 @@ resource "oci_core_instance" "generated_oci_core_instance" {
 		
 
 		plugins_config {
-			desired_state = var.desired_state1
-			name = var.name1
+			desired_state = var.vulnerability_scanning_state
+			name = var.vulnerability_scanning_name
 		}
 		plugins_config {
-			desired_state = var.desired_state2
-			name = var.name2
+			desired_state = var.java_management_service_state
+			name = var.java_management_service_name
 		}
 		plugins_config {
-			desired_state = var.desired_state3
-			name = var.name3
+			desired_state = var.autonomous_linux_state
+			name = var.autonomous_linux_name
 		}
 		plugins_config {
-			desired_state = var.desired_state4
-			name = var.name4
+			desired_state = var.os_management_service_state
+			name = var.os_management_service_name
 		}
 		plugins_config {
-			desired_state = var.desired_state5
-			name = var.name5
+			desired_state = var.management_agent_state
+			name = var.management_agent_name
 		}
 		plugins_config {
-			desired_state = var.desired_state6
-			name = var.name6
+			desired_state = var.custom_logs_monitoring_state
+			name = var.custom_logs_monitoring_name
 		}
 		plugins_config {
-			desired_state = var.desired_state7
-			name = var.name7
+			desired_state = var.run_command_state
+			name = var.run_command_name
 		}
 		plugins_config {
-			desired_state = var.desired_state8
-			name = var.name8
+			desired_state = var.instance_monitoring_state
+			name = var.instance_monitoring_name
 		}
 		plugins_config {
-			desired_state = var.desired_state9
-			name = var.name9
+			desired_state = var.block_volume_management_state
+			name = var.block_volume_management_name
 		}
 		plugins_config {
-			desired_state = var.desired_state10
-			name = var.name10
+			desired_state = var.bastion_state
+			name = var.bastion_name
 		}
 		
 	}
@@ -85,45 +85,6 @@ resource "oci_core_instance" "generated_oci_core_instance" {
 
 }
 
-resource "oci_core_vnic_attachment" "secondary_vnic_1" {
-  instance_id = oci_core_instance.generated_oci_core_instance.id
-  display_name = "${var.display_name}-untrst-vnic"
-  
-  create_vnic_details {
-    subnet_id = var.untrst_subnet_ocid
-    assign_public_ip = var.assign_public_ip_secondary
-	skip_source_dest_check = var.skip_source_dest_check
-    assign_private_dns_record = var.assign_private_dns_record_secondary
-  }
-  
-}
-
-resource "oci_core_vnic_attachment" "secondary_vnic_2" {
-  instance_id = oci_core_instance.generated_oci_core_instance.id
-  display_name = "${var.display_name}-trust-vnic"
-  
-  create_vnic_details {
-    subnet_id = var.trust_subnet_ocid
-    assign_public_ip = var.assign_public_ip_secondary
-	skip_source_dest_check = var.skip_source_dest_check
-    assign_private_dns_record = var.assign_private_dns_record_secondary
-  }
-  
-}
-
-resource "oci_core_vnic_attachment" "secondary_vnic_3" {
-  instance_id = oci_core_instance.generated_oci_core_instance.id
-  display_name = "${var.display_name}-hub-vnic"
-  
-  create_vnic_details {
-    subnet_id = var.hub_subnet_ocid
-    assign_public_ip = var.assign_public_ip_secondary
-	skip_source_dest_check = var.skip_source_dest_check
-    assign_private_dns_record = var.assign_private_dns_record_secondary
-  }
-  
-}
-
 resource "oci_core_app_catalog_subscription" "generated_oci_core_app_catalog_subscription" {
 	compartment_id =  var.compartment_ocid
 	eula_link      = "${oci_core_app_catalog_listing_resource_version_agreement.generated_oci_core_app_catalog_listing_resource_version_agreement.eula_link}"
@@ -133,13 +94,11 @@ resource "oci_core_app_catalog_subscription" "generated_oci_core_app_catalog_sub
 	signature      = "${oci_core_app_catalog_listing_resource_version_agreement.generated_oci_core_app_catalog_listing_resource_version_agreement.signature}"
 	time_retrieved = "${oci_core_app_catalog_listing_resource_version_agreement.generated_oci_core_app_catalog_listing_resource_version_agreement.time_retrieved}"
   
- 
 }
 
 resource "oci_core_app_catalog_listing_resource_version_agreement" "generated_oci_core_app_catalog_listing_resource_version_agreement" {
 	listing_id               = var.listing_id
 	listing_resource_version = var.listing_resource_version
-	
 
 }
 
