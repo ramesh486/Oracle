@@ -63,6 +63,7 @@ module "untrust_vnic" {
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
 		assign_public_ip_secondary = var.assign_public_ip_secondary
 		skip_source_dest_check = var.skip_source_dest_check
+		nic_index       = var.hub_nic_index
 
 }
 
@@ -73,6 +74,7 @@ module "trust_vnic" {
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
 		assign_public_ip_secondary = var.assign_public_ip_secondary
 		skip_source_dest_check = var.skip_source_dest_check
+		nic_index        = var.trust_nic_index
 
 }
 
@@ -83,5 +85,6 @@ module "hub_vnic" {
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
 		assign_public_ip_secondary = var.assign_public_ip_secondary
 		skip_source_dest_check = var.skip_source_dest_check
+		nic_index            = var.untrust_nic_index
 
 }

@@ -3,4 +3,4 @@ variable "assign_public_ip_secondary" { }
 variable "trust_subnet_ocid" { }
 variable "skip_source_dest_check" { }
 variable "trust_vnic_display_name" { }
-variable "hub_nic_index" { }
+variable "trust_nic_index" { }
