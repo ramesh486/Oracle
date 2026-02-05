@@ -59,9 +59,9 @@ resource "oci_core_instance" "generated_oci_core_instance" {
 	availability_domain = data.oci_identity_availability_domains.ADs.availability_domains[0]["name"]
 	compartment_id = var.compartment_ocid
 	create_vnic_details {
-		assign_private_dns_record = var.assign_private_dns_record
-		assign_public_ip = var.assign_public_ip
-		subnet_id = var.subnet_ocid
+		assign_private_dns_record = var.assign_private_dns_record_primary
+		assign_public_ip = var.assign_public_ip_primary
+		subnet_id = var.mgmt_subnet_ocid
 	}
 	
 	display_name = var.display_name
@@ -85,11 +85,50 @@ resource "oci_core_instance" "generated_oci_core_instance" {
 
 }
 
+resource "oci_core_vnic_attachment" "secondary_vnic_1" {
+  instance_id = oci_core_instance.generated_oci_core_instance.id
+  display_name = "${var.display_name}-untrst-vnic"
+  
+  create_vnic_details {
+    subnet_id = var.untrst_subnet_ocid
+    assign_public_ip = var.assign_public_ip_secondary
+	skip_source_dest_check = var.skip_source_dest_check
+    assign_private_dns_record = var.assign_private_dns_record_secondary
+  }
+  
+}
+
+resource "oci_core_vnic_attachment" "secondary_vnic_2" {
+  instance_id = oci_core_instance.generated_oci_core_instance.id
+  display_name = "${var.display_name}-trust-vnic"
+  
+  create_vnic_details {
+    subnet_id = var.trust_subnet_ocid
+    assign_public_ip = var.assign_public_ip_secondary
+	skip_source_dest_check = var.skip_source_dest_check
+    assign_private_dns_record = var.assign_private_dns_record_secondary
+  }
+  
+}
+
+resource "oci_core_vnic_attachment" "secondary_vnic_3" {
+  instance_id = oci_core_instance.generated_oci_core_instance.id
+  display_name = "${var.display_name}-hub-vnic"
+  
+  create_vnic_details {
+    subnet_id = var.hub_subnet_ocid
+    assign_public_ip = var.assign_public_ip_secondary
+	skip_source_dest_check = var.skip_source_dest_check
+    assign_private_dns_record = var.assign_private_dns_record_secondary
+  }
+  
+}
+
 resource "oci_core_app_catalog_subscription" "generated_oci_core_app_catalog_subscription" {
 	compartment_id =  var.compartment_ocid
 	eula_link      = "${oci_core_app_catalog_listing_resource_version_agreement.generated_oci_core_app_catalog_listing_resource_version_agreement.eula_link}"
 	listing_id     = "${oci_core_app_catalog_listing_resource_version_agreement.generated_oci_core_app_catalog_listing_resource_version_agreement.listing_id}"
-	listing_resource_version = "10.2.3"
+	listing_resource_version = var.listing_resource_version
 	oracle_terms_of_use_link = "${oci_core_app_catalog_listing_resource_version_agreement.generated_oci_core_app_catalog_listing_resource_version_agreement.oracle_terms_of_use_link}"
 	signature      = "${oci_core_app_catalog_listing_resource_version_agreement.generated_oci_core_app_catalog_listing_resource_version_agreement.signature}"
 	time_retrieved = "${oci_core_app_catalog_listing_resource_version_agreement.generated_oci_core_app_catalog_listing_resource_version_agreement.time_retrieved}"
@@ -98,8 +137,8 @@ resource "oci_core_app_catalog_subscription" "generated_oci_core_app_catalog_sub
 }
 
 resource "oci_core_app_catalog_listing_resource_version_agreement" "generated_oci_core_app_catalog_listing_resource_version_agreement" {
-	listing_id               = "ocid1.appcataloglisting.oc1..aaaaaaaai7wszf2tvojm2zw5epmx6ynaivbbe6zpye2kts344zg6u2jujbta"
-	listing_resource_version = "10.2.3"
+	listing_id               = var.listing_id
+	listing_resource_version = var.listing_resource_version
 	
 
 }

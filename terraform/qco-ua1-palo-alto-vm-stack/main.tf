@@ -7,13 +7,14 @@ module "paloaltovm" {
 	    region                 = var.region
 		tenancy_ocid           = var.tenancy_ocid
 	    compartment_ocid       = local.app_compartment_ocid
-		subnet_ocid            = local.subnet_ocid
+		mgmt_subnet_ocid       = local.mgmt_subnet_ocid
+		untrst_subnet_ocid     = local.untrst_subnet_ocid
+		trust_subnet_ocid      = local.trust_subnet_ocid
+		hub_subnet_ocid        = local.hub_subnet_ocid
 		project_tag            = var.project_tag
-
 
 		is_management_disabled = var.is_management_disabled
 		is_monitoring_disabled = var.is_monitoring_disabled
-		
 		desired_state1 = var.desired_state1
 		name1 = var.name1
 		desired_state2 = var.desired_state2
@@ -39,8 +40,11 @@ module "paloaltovm" {
     ssh_keys = var.ssh_keys
 	recovery_action = var.recovery_action
 	
-	assign_private_dns_record = var.assign_private_dns_record
-	assign_public_ip = var.assign_public_ip
+	assign_private_dns_record_primary = var.assign_private_dns_record_primary
+	assign_public_ip_primary = var.assign_public_ip_primary
+	assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
+	assign_public_ip_secondary = var.assign_public_ip_secondary
+	skip_source_dest_check = var.skip_source_dest_check
 
 	display_name = var.display_name
 	are_legacy_imds_endpoints_disabled = var.are_legacy_imds_endpoints_disabled
@@ -51,5 +55,8 @@ module "paloaltovm" {
 	
 	source_id = var.source_id
 	source_type = var.source_type
+
+	listing_id = var.listing_id
+	listing_resource_version = var.listing_resource_version
 
 }

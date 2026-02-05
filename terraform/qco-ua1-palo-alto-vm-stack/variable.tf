@@ -56,11 +56,28 @@ variable "network_compartment_name" {
     description = "Compartment Name of the Subnet"
 }
 
-variable subnet_display_name{
+variable primary_mgmt_subnet_display_name{
   type        = string
   default     = "qco-ua1-prod-ha-sn"
-  description = "Name of the Subnet"
+  description = "Name of the primary mgmt Subnet"
+}
 
+variable secondary_untrust_subnet_display_name{
+  type        = string
+  default     = "qco-ua1-prod-ha-sn"
+  description = "Name of the secondary untrust Subnet"
+}
+
+variable secondary_trust_subnet_display_name{
+  type        = string
+  default     = "qco-ua1-prod-ha-sn"
+  description = "Name of the secondary trust Subnet"
+}
+
+variable secondary_hub_subnet_display_name{
+  type        = string
+  default     = "qco-ua1-prod-ha-sn"
+  description = "Name of the secondary hub Subnet"
 }
 
 variable "project_tag" {
@@ -223,16 +240,46 @@ variable "recovery_action" {
   default     = "RESTORE_INSTANCE" 
 }
 
-variable "assign_private_dns_record" {
+variable "assign_private_dns_record_primary" {
   type        = bool
   description = "assign private dns record"
   default     = true 
 }
 
-variable "assign_public_ip" {
+variable "assign_public_ip_primary" {
   type        = bool
   description = "assign public ip"
   default     = false
+}
+
+variable "assign_private_dns_record_secondary" {
+  type        = bool
+  description = "assign private dns record"
+  default     = false
+}
+
+variable "assign_public_ip_secondary" {
+  type        = bool
+  description = "assign public ip"
+  default     = false
+}
+
+variable "skip_source_dest_check" {
+  type        = bool
+  description = "skip source dest check"
+  default     = true
+}
+
+variable "listing_id" {
+  type        = string
+  description = "listing id"
+  default     = ""
+}
+
+variable "listing_resource_version" {
+  type        = string
+  description = "listing resource version"
+  default     = "10.2.3"
 }
 
 variable "are_legacy_imds_endpoints_disabled" {
