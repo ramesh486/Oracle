@@ -61,7 +61,8 @@ module "untrust_vnic" {
 		untrst_subnet_ocid     = local.untrst_subnet_ocid
 		untrust_vnic_display_name  = var.untrust_vnic_display_name
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
-		assign_public_ip_secondary = var.assign_public_ip_secondary
+		assign_public_ip_secondary  = var.assign_public_ip_secondary
+		instance_id           = module.paloaltovm.instance_id
 		skip_source_dest_check = var.skip_source_dest_check
 		untrust_nic_index            = var.untrust_nic_index
 		
@@ -74,6 +75,7 @@ module "trust_vnic" {
 		trust_vnic_display_name = var.trust_vnic_display_name
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
 		assign_public_ip_secondary = var.assign_public_ip_secondary
+		instance_id = module.paloaltovm.instance_id
 		skip_source_dest_check = var.skip_source_dest_check
 		trust_nic_index        = var.trust_nic_index
 
@@ -85,8 +87,8 @@ module "hub_vnic" {
 		hub_vnic_display_name  = var.hub_vnic_display_name
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
 		assign_public_ip_secondary = var.assign_public_ip_secondary
-		skip_source_dest_check = var.skip_source_dest_check
-		
+		instance_id = module.paloaltovm.instance_id
+		skip_source_dest_check = var.skip_source_dest_check	
 		hub_nic_index       = var.hub_nic_index
 
 }

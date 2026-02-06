@@ -1,5 +1,5 @@
 resource "oci_core_vnic_attachment" "untrust_vnic" {
-  instance_id = module.paloaltovm_module.instance_id
+  instance_id = module.paloaltovm.instance_id
   display_name = var.untrust_vnic_display_name
   
   create_vnic_details {
