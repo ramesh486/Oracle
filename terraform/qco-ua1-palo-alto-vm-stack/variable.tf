@@ -315,13 +315,13 @@ variable "hub_vnic_display_name" {
 variable "trust_vnic_display_name" {
   type        = string
   description = "display name"
-  default     = "qco-ua1-palo-alto-vm-sec-trust-vnic"
+  default     = "qco-ua1-palo-alto-sec-trust-vnic"
 }
 
 variable "untrust_vnic_display_name" {
   type        = string
   description = "display name"
-  default     = "qco-ua1-palo-alto-vm-sec-untrst-vnic"
+  default     = "qco-ua1-palo-alto-sec-untrst-vnic"
 }
 
 variable "shape" {
