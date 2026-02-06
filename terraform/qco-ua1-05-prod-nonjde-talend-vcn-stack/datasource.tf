@@ -33,7 +33,7 @@ data "oci_core_local_peering_gateways" "prod_hub_lpg" {
 
   filter {
     name   = "display_name"
-    values = ["${var.prod_hub_vcn_to_prod_nonjde_vcn_lpg_display_name}"]
+    values = ["${var.prod_hub_vcn_to_prod_nonjde_talend_vcn_lpg_display_name}"]
   }
 }
 

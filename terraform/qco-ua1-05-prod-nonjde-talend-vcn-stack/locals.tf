@@ -45,16 +45,16 @@ locals {
       "security_list_egress_security_rules_destination"      = local.cidr_blocks.any_ip_range
       "security_list_egress_security_rules_protocol"         = local.security_list_protocols.ALL_PROTOCOLS
       "security_list_egress_security_rules_destination_type" = local.cidr_blocks_type.cidr_block
-      "security_list_egress_security_rules_stateless"        = var.vcn_prod_nonjde_securitylist_is_stateless
+      "security_list_egress_security_rules_stateless"        = var.talend_vcn_prod_nonjde_securitylist_is_stateless
     }
   ]
 
   vcn_prod_nonjde_source_security_rules = [
     {
-      "security_list_ingress_security_rules_source"      = var.vcn_prod_nonjde_cidr_block
+      "security_list_ingress_security_rules_source"      = var.talend_vcn_prod_nonjde_cidr_block
       "security_list_ingress_security_rules_protocol"    = local.security_list_protocols.ALL_PROTOCOLS
       "security_list_ingress_security_rules_source_type" = local.cidr_blocks_type.cidr_block
-      "security_list_ingress_security_rules_stateless"   = var.vcn_prod_nonjde_securitylist_is_stateless
+      "security_list_ingress_security_rules_stateless"   = var.talend_vcn_prod_nonjde_securitylist_is_stateless
     }
   ]
 
