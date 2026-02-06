@@ -59,7 +59,7 @@ module "paloaltovm" {
 module "untrust_vnic" {
         source                 = "./untrustvnic_module"
 		untrst_subnet_ocid     = local.untrst_subnet_ocid
-		untrust_vnic_display_name  = var.untrst_vnic_display_name
+		untrust_vnic_display_name  = var.untrust_vnic_display_name
 		assign_private_dns_record_secondary = var.assign_private_dns_record_secondary
 		assign_public_ip_secondary = var.assign_public_ip_secondary
 		skip_source_dest_check = var.skip_source_dest_check
