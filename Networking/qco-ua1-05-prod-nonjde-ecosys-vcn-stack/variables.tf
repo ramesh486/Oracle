@@ -168,7 +168,7 @@ variable "ecosys_vcn_prod_nonjde_routetable_private_display_name" {
 variable "drg_display_name" {
   type        = string
   description = "DRG Display Name"
-  default     = "qco-uas1-prod-drg"
+  default     = "qco-ua1-prod-drg"
 }
 
 variable "ecosys_vcn_prod_nonjde_drg_attachment_display_name" {
