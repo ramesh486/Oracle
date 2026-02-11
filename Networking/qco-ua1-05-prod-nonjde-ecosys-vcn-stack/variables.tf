@@ -73,7 +73,7 @@ variable "ecosys_vcn_prod_nonjde_display_name" {
 variable "ecosys_vcn_prod_nonjde_dns_label" {
   type        = string
   description = "Prod NONJDE ECOSYS VCN DNS Label"
-  default     = "prdnonjdeecosysvcnuas1"
+  default     = "ecosysvcnuas1"
 }
 
 variable "ecosys_vcn_prod_nonjde_cidr_block" {
