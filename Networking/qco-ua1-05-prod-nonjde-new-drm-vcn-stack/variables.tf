@@ -73,7 +73,7 @@ variable "new_drm_vcn_prod_nonjde_display_name" {
 variable "new_drm_vcn_prod_nonjde_dns_label" {
   type        = string
   description = "Prod NONJDE NEW DRM VCN DNS Label"
-  default     = "prdnonjdenewdrmvcnuas1"
+  default     = "newdrmvcn"
 }
 
 variable "new_drm_vcn_prod_nonjde_cidr_block" {
@@ -168,7 +168,7 @@ variable "new_drm_vcn_prod_nonjde_routetable_private_display_name" {
 variable "drg_display_name" {
   type        = string
   description = "DRG Display Name"
-  default     = "qco-uas1-prod-drg"
+  default     = "qco-ua1-prod-drg"
 }
 
 variable "new_drm_vcn_prod_nonjde_drg_attachment_display_name" {
@@ -180,7 +180,7 @@ variable "new_drm_vcn_prod_nonjde_drg_attachment_display_name" {
 variable "spoke_vcn_drg_route_table_display_name" {
   type        = string
   description = "Spoke VCN DRG Route Table Display Name"
-  default     = "qco-uas1-prod-spoke-vcn-drg-route-table"
+  default     = "qco-ua1-prod-spoke-vcn-drg-route-table"
 }
 
 
