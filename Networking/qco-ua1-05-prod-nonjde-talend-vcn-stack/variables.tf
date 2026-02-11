@@ -73,7 +73,7 @@ variable "talend_vcn_prod_nonjde_display_name" {
 variable "talend_vcn_prod_nonjde_dns_label" {
   type        = string
   description = "Prod NONJDE TALEND VCN DNS Label"
-  default     = "prdnonjdetalendvcnuas1"
+  default     = "talendvcnuas1"
 }
 
 variable "talend_vcn_prod_nonjde_cidr_block" {
@@ -108,7 +108,7 @@ variable "talend_sn_prod_nonjde_display_name" {
 variable "talend_sn_prod_nonjde_dns_label" {
   type        = string
   description = "Prod NONJDE Subnet DNS Label"
-  default     = "talendsn1"
+  default     = "talendsn"
 }
 
 variable "talend_sn_prod_nonjde_cidr_block" {
