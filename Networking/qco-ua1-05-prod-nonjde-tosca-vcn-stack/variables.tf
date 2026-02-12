@@ -39,6 +39,12 @@ variable "hub_compartment_name" {
   description = "Hub Compartment Name"
 }
 
+variable "prod_compartment_name" {
+  type        = string
+  default     = "qco-prod-network"
+  description = "Prod Compartment Name"
+}
+
 variable "compartment_id_in_subtree" {
   type        = bool
   default     = true
