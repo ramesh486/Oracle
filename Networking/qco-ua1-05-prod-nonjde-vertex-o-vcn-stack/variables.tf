@@ -180,7 +180,7 @@ variable "vertex_o_vcn_prod_nonjde_drg_attachment_display_name" {
 variable "spoke_vcn_drg_route_table_display_name" {
   type        = string
   description = "Spoke VCN DRG Route Table Display Name"
-  default     = "qco-ua1-prod-spoke-vcn-drg-route-table"
+  default     = "qco-uas1-spoke-vcn-drg-route-table"
 }
 
 
