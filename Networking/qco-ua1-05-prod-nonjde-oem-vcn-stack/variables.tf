@@ -29,7 +29,7 @@ variable "api_private_key" {
 
 variable "compartment_name" {
   type        = string
-  default     = "qco-prod-network"
+  default     = "qco-shared-services"
   description = "Compartment Name to deploy the VCN"
 }
 
@@ -37,6 +37,12 @@ variable "hub_compartment_name" {
   type        = string
   default     = "qco-hub-network"
   description = "Hub Compartment Name"
+}
+
+variable "prod_compartment_name" {
+  type        = string
+  default     = "qco-prod-network"
+  description = "Prod Compartment Name"
 }
 
 variable "compartment_id_in_subtree" {
@@ -73,7 +79,7 @@ variable "oem_vcn_nonjde_display_name" {
 variable "oem_vcn_nonjde_dns_label" {
   type        = string
   description = "NONJDE OEM VCN DNS Label"
-  default     = "prdnonjdeoemvcnuas1"
+  default     = "oemvcn"
 }
 
 variable "oem_vcn_nonjde_cidr_block" {

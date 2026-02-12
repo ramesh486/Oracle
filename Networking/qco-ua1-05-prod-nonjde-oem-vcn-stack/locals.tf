@@ -6,6 +6,7 @@ locals {
   }
   compartment_ocid               = data.oci_identity_compartments.this.compartments[0].id
   hub_compartment_ocid           = data.oci_identity_compartments.hub.compartments[0].id
+  prod_compartment_ocid          = data.oci_identity_compartments.prod.compartments[0].id
   drg_ocid                       = data.oci_core_drgs.this.drgs[0].id
   spoke_vcn_drg_route_table_ocid = data.oci_core_drg_route_tables.this.drg_route_tables[0].id
 
