@@ -10,8 +10,14 @@ data "oci_identity_compartments" "hub" {
   name                      = var.hub_compartment_name
 }
 
+data "oci_identity_compartments" "prod" {
+  compartment_id            = var.tenancy_ocid
+  compartment_id_in_subtree = var.compartment_id_in_subtree
+  name                      = var.prod_compartment_name
+}
+
 data "oci_core_drgs" "this" {
-  compartment_id = local.compartment_ocid
+  compartment_id = local.prod_compartment_ocid
   filter {
     name   = "display_name"
     values = ["${var.drg_display_name}"]
