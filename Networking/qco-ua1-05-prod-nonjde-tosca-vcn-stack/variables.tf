@@ -79,7 +79,7 @@ variable "tosca_vcn_nonjde_display_name" {
 variable "tosca_vcn_nonjde_dns_label" {
   type        = string
   description = "NONJDE TOSCA VCN DNS Label"
-  default     = "toscavcn"
+  default     = "toscavcn1"
 }
 
 variable "tosca_vcn_nonjde_cidr_block" {
