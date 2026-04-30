@@ -1,0 +1,41 @@
+name: Send Manual Email
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipient:
+        description: 'Recipient email address'
+        required: true
+      subject:
+        description: 'Email subject'
+        required: true
+        default: 'Hello from GitHub Actions'
+      body:
+        description: 'Email body content'
+        required: true
+        default: 'Hello Sir,\n\nHow are you?\n\nBest regards,\nYour Team'
+
+jobs:
+  send-email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install pyopenssl
+
+      - name: Send email
+        env:
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          python mail.py \
+            --to "${{ github.event.inputs.recipient }}" \
+            --subject "${{ github.event.inputs.subject }}" \
+            --body "${{ github.event.inputs.body }}"

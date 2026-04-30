@@ -1,0 +1,344 @@
+# This workflow installs the latest version of OCI CLI and configures the OCI CLI configuration file
+# with an API token for the Oracle Cloud (cloud.oracle.com). OCI Resource Manager is used to manage the terraform and tfstate file.
+# this workflow will run `terraform init`, and `terraform plan`. On successful pull request merge `terraform apply` will be executed.
+
+on:
+  workflow_call:
+    inputs:
+      PROVIDER_NAME:
+        required: true
+        type: string
+      BRANCH_NAME:
+        required: true
+        type: string
+      STACK_NAME:
+        required: true
+        type: string
+      WORKING_DIRECTORY:
+        required: true
+        type: string
+      REPO_URL:
+        required: true
+        type: string
+      TF_VERSION:
+        required: true
+        type: string
+    secrets:
+      USER_OCID:
+        required: true
+      FINGERPRINT:
+        required: true
+      COMPARTMENT_OCID:
+        required: true
+      REGION:
+        required: true
+      TENANCY_OCID:
+        required: true
+      PRIVATE_KEY_FILE:
+        required: true
+      EMAIL_ID:
+        required: true
+      SMTP_USERNAME:
+        required: true
+      SMTP_PASSWORD:
+        required: true
+      
+  workflow_dispatch:
+  push:
+    branches:
+      - development
+
+env:
+  PROVIDER_NAME: ${{ inputs.PROVIDER_NAME }}
+  REGION: ${{ inputs.REGION }}
+  BRANCH_NAME: ${{ inputs.BRANCH_NAME }}
+  STACK_NAME: ${{ inputs.STACK_NAME }}
+  WORKING_DIRECTORY: ${{ inputs.WORKING_DIRECTORY }}
+  REPO_URL: ${{ inputs.REPO_URL }}
+  TF_VERSION: ${{ inputs.TF_VERSION }}
+
+# ---------------------------------------------
+# Permissions
+# ---------------------------------------------
+
+permissions:
+  contents: write
+
+jobs:
+  STACK:
+    runs-on: self-hosted
+
+    steps:
+      # ---------------------------------------------
+      # Checkout  
+      # ---------------------------------------------
+
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          ref: 'development'
+          fetch-depth: 0
+          persist-credentials: true
+
+      # ---------------------------------------------
+      # Update tfvars.json file  
+      # ---------------------------------------------
+
+      # - name: 'Update tfvars.json file'
+      #   run: |
+      #     echo '${{ toJson(github.event.client_payload) }}' > new.json
+      #     jq -s '.[0] * .[1]' $WORKING_DIRECTORY/tfvars.json new.json > updated.json
+      #     mv updated.json $WORKING_DIRECTORY/tfvars.json
+
+      # ---------------------------------------------
+      #  Writing config files
+      # ---------------------------------------------
+
+      - name: 'Writing config files'
+        run: |
+          rm -rf ~/.oci
+          mkdir ~/.oci
+          echo "[DEFAULT]" >> ~/.oci/config
+          echo "user=${{secrets.USER_OCID}}" >> ~/.oci/config
+          echo "fingerprint=${{secrets.FINGERPRINT}}" >> ~/.oci/config
+          echo "compartment_ocid=${{secrets.COMPARTMENT_OCID}}" >> ~/.oci/config
+          echo "region=${{secrets.REGION}}" >> ~/.oci/config
+          echo "tenancy=${{secrets.TENANCY_OCID}}" >> ~/.oci/config
+          echo "key_file=~/.oci/key.pem" >> ~/.oci/config
+          echo "${{secrets.PRIVATE_KEY_FILE}}" >> ~/.oci/key.pem
+          chmod 600 ~/.oci/key.pem
+          echo "~/.oci/config file "
+          cat ~/.oci/config
+          echo " ~/.oci/key.pem file"
+          ls -lta ~/.oci
+          ls -lta ~
+
+      # ---------------------------------------------
+      #  Install OCI CLI
+      # ---------------------------------------------
+
+      - name: 'Install OCI CLI'
+        run: |
+          # curl -L -O https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh
+          # chmod +x install.sh
+          # ./install.sh --accept-all-defaults
+          # echo "/home/ubuntu/bin" >> $GITHUB_PATH
+          # echo " Fixing file permissions and testing oci"
+          # /home/ubuntu/bin/oci setup repair-file-permissions --file ~/.oci/config
+          # /home/ubuntu/bin/oci setup repair-file-permissions --file ~/.oci/key.pem
+          # echo "# ---------------------------------------------"
+          # echo "#  Authenticating to OCI"
+          # echo "# ---------------------------------------------"
+          oci os ns get
+          if [ $? -ne 0 ]; then
+            echo "Authentication failed"
+            exit 1
+          else
+            echo "Authentication is successful"
+          fi
+      
+      
+      - name: 'Get Tenancy and Repo Name'
+        run: |
+          echo "TENANCY_NAME=$(oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}} | jq -r '.data.name')"  >> $GITHUB_ENV
+          # echo "TENANCY_NAME=$(oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}})
+          # TENANCY_NAME=$(oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}} | jq -r '.data.name')
+          oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}} | jq -r '.data.name'
+          echo "${TENANCY_NAME}"
+          echo "REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)" >> $GITHUB_ENV
+      - name: 'Set Repo directory'
+        run: |
+          echo "REPO_DIR=/home/ubuntu/actions-runner/_work/${{ env.REPO_NAME }}/${{ env.REPO_NAME }}" >> $GITHUB_ENV
+             
+      # # ---------------------------------------------
+      # # Install Terraform
+      # # ---------------------------------------------
+      # - name: Setup Terraform
+      #   uses: hashicorp/setup-terraform@v3
+      #   with:
+      #     terraform_version: ${{ inputs.TF_VERSION }}
+
+      # # ---------------------------------------------
+      # # Terraform Init & Plan
+      # # ---------------------------------------------
+      # - name: Terraform Init
+      #   run: terraform -chdir=${{ inputs.WORKING_DIRECTORY }} init
+
+      # - name: Terraform Plan
+      #   run: terraform -chdir=${{ inputs.WORKING_DIRECTORY }} plan
+
+      # # ---------------------------------------------
+      # # Terraform Apply (only on push to main)
+      # # ---------------------------------------------
+      # - name: Terraform Apply
+      #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      #   run: terraform -chdir=${{ inputs.WORKING_DIRECTORY }} apply -auto-approve
+
+      # ---------------------------------------------
+      # Install Python and CD3 dependencies
+      # ---------------------------------------------
+      - name: 'Set up Python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Expect
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y expect util-linux moreutils tclsh
+
+      - name: 'Install CD3 dependencies'
+        run: |
+          cp ~/.oci/config ~/.oci/config.txt
+          ls -lrth
+          pwd
+          cd cd3_automation_toolkit
+          pip install --upgrade pip
+          pip install -r pypackages.txt
+          pip install pyopenssl
+
+ 
+      
+      - name: 'Update Tenancy Config Properties file'
+        run: |
+          
+          echo "Listing files in current directory:"
+          ls -lrth
+          cd cd3_automation_toolkit/user-scripts
+          echo "Current Directory: $(pwd)"
+          echo "Updating tenancyconfig.properties file"
+          sed -i "s|^prefix=.*|prefix=${TENANCY_NAME}|" tenancyconfig.properties
+          sed -i "s|^tenancy_ocid=.*|tenancy_ocid=${{ secrets.TENANCY_OCID }}|" tenancyconfig.properties
+          sed -i "s|^region=.*|region=${{ secrets.REGION }}|" tenancyconfig.properties
+          sed -i "s|^user_ocid=.*|user_ocid=${{ secrets.USER_OCID }}|" tenancyconfig.properties
+          sed -i "s|^fingerprint=.*|fingerprint=${{ secrets.FINGERPRINT }}|" tenancyconfig.properties
+          sed -i "s|^key_path=.*|key_path=/home/ubuntu/.oci/key.pem|" tenancyconfig.properties
+          cat tenancyconfig.properties
+          
+      # ---------------------------------------------
+      # Create CD3 user directory
+      # ---------------------------------------------
+      - name: 'Create CD3 user directory'
+        run: |
+          echo "Creating cd3user directory"
+          rm -rf "${REPO_DIR}/cd3_automation_toolkit/cd3user"
+          mkdir -p "${REPO_DIR}/cd3_automation_toolkit/cd3user"
+          echo "CD3_USER_DIRECTORY=${REPO_DIR}/cd3_automation_toolkit/cd3user" >> $GITHUB_ENV
+          ls -lrth "${REPO_DIR}/cd3_automation_toolkit/cd3user"
+      # ---------------------------------------------
+      # Run CD3 extract
+      # ---------------------------------------------
+      - name: 'Run Create Tenancy Config'
+        run: |
+          
+          echo "${TENANCY_NAME}"
+          pwd
+          cd cd3_automation_toolkit/user-scripts
+          
+          sed -i "s|^tenancy_ocid=.*|tenancy_ocid=${{ secrets.TENANCY_OCID }}|" tenancyconfig.properties
+          sed -i "s|^region=.*|region=${{ secrets.REGION }}|" tenancyconfig.properties
+          sed -i "s|^user_ocid=.*|user_ocid=${{ secrets.USER_OCID }}|" tenancyconfig.properties
+          sed -i "s|^fingerprint=.*|fingerprint=${{ secrets.FINGERPRINT }}|" tenancyconfig.properties
+          sed -i "s|^prefix=.*|prefix=${TENANCY_NAME}|" tenancyconfig.properties
+          sed -i "s|^auth_mechanism=.*|auth_mechanism=api_key|" tenancyconfig.properties
+          sed -i "s|^key_path=.*|key_path=/home/ubuntu/.oci/key.pem|" tenancyconfig.properties
+          echo "Viewing tenancyconfig.properties file"
+          cat tenancyconfig.properties
+          chmod +x run_createTenancyConfig.exp
+          expect ./run_createTenancyConfig.exp
+
+          python createTenancyConfig.py tenancyconfig.properties
+          echo "CD3_SETUP_PROPERTIES=${REPO_DIR}/cd3_automation_toolkit/cd3user/tenancies/${TENANCY_NAME}/${TENANCY_NAME}_setUpOCI.properties" >> $GITHUB_ENV
+          echo "CD3_SETUP_DIR=${REPO_DIR}/cd3_automation_toolkit/cd3user/tenancies/${TENANCY_NAME}" >> $GITHUB_ENV
+          # cd ..
+          ls -lrth
+          # cp ${REPO_DIR}/cd3_automation_toolkit/example/CD3-Blank-template.xlsx /home/runner/cd3user/tenancies/ebizoncloudllc/CD3-Blank-template.xlsx
+          # sed -i "s|^cd3file=.*|cd3file=/home/runner/cd3user/tenancies/ebizoncloudllc/CD3-Blank-template.xlsx|" /home/runner/cd3user/tenancies/ebizoncloudllc/ebizoncloudllc_setUpOCI.properties
+          # sed -i "s|^workflow_type=.*|workflow_type=export_resources|" /home/runner/cd3user/tenancies/ebizoncloudllc/ebizoncloudllc_setUpOCI.properties
+          # cat /home/runner/cd3user/tenancies/ebizoncloudllc/ebizoncloudllc_setUpOCI.properties
+          # python setUpOCI.py /home/runner/cd3user/tenancies/ebizoncloudllc/ebizoncloudllc_setUpOCI.properties
+
+
+      - name: 'Show CD3 Setup Properties'
+        run: |
+          echo "${CD3_SETUP_PROPERTIES}"
+          ls -lrth "${CD3_SETUP_DIR}"
+          cp "${REPO_DIR}/cd3_automation_toolkit/example/CD3-Blank-template.xlsx" "${CD3_SETUP_DIR}/CD3-Export-All-Resources.xlsx"
+          sed -i "s|^cd3file=.*|cd3file=${CD3_SETUP_DIR}/CD3-Export-All-Resources.xlsx|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^workflow_type=.*|workflow_type=export_resources|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^outdir=.*|outdir=${CD3_SETUP_DIR}/terraform_files|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^prefix=.*|prefix=${TENANCY_NAME}|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^auth_mechanism=.*|auth_mechanism=api_key|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^config_file=.*|config_file=${CD3_SETUP_DIR}/.config_files/${TENANCY_NAME}_oci_config|" "${CD3_SETUP_PROPERTIES}"
+          # sed -i "s|^config_file=.*|config_file=/home/runner/.oci/config.txt|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^tf_or_tofu=.*|tf_or_tofu=terraform|" "${CD3_SETUP_PROPERTIES}"
+          sudo chvt 1
+          cat "${CD3_SETUP_PROPERTIES}"
+
+
+      - name: 'Run CD3 Export Script with expect'
+        env:
+          TERM: dumb
+        run: |
+          
+          tty || echo "Not a tty"
+          echo "TERM=$TERM"
+          # env
+          cd cd3_automation_toolkit
+          pwd
+          chmod +x ./oci-setup.exp
+          echo "Running EXPECT Script"
+          # script -q -c "expect oci-setup.exp \"${CD3_SETUP_PROPERTIES}\"" /dev/null
+          # python3.9 setUpOCI.py "${CD3_SETUP_PROPERTIES}" || true
+          # script -q -c 'expect ./oci-setup.exp \"${CD3_SETUP_PROPERTIES}\"' /dev/null
+          # expect oci-setup.exp "${CD3_SETUP_PROPERTIES}"
+          expect run-setup.exp "${CD3_SETUP_PROPERTIES}" #comment
+ 
+          # python setUpOCI.py "${CD3_SETUP_PROPERTIES}"
+          cp "${CD3_SETUP_DIR}/CD3-Export-All-Resources.xlsx" "${REPO_DIR}/cd3_automation_toolkit" 
+
+      - name: Configure Git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit changes
+        run: |
+          git add "${REPO_DIR}/cd3_automation_toolkit/CD3-Export-All-Resources.xlsx"
+          git add "${REPO_DIR}/cd3_automation_toolkit/user-scripts/*"
+          git diff --cached --quiet || git commit -m "ci: update cd3 file"
+
+      - name: Push back to development
+        run: |
+          # pushes to the same branch that triggered the workflow
+          git push origin HEAD:development
+
+      # - name: Checkout repository
+      #   uses: actions/checkout@v4
+
+      # - name: Install dependencies
+      #   run: pip install pyopenssl
+
+      - name: Send email
+        env:
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          cd cd3_automation_toolkit
+          python mail.py \
+            --to "${{ secrets.EMAIL_ID }}" \
+            --subject "CD3 Export Completed" \
+            --body "Hi Please find the attached CD3 Export file for the tenancy ${TENANCY_NAME}.\n\nBest regards,\n AIAGENTS4BIZ Team" \
+            --attachments "${REPO_DIR}/cd3_automation_toolkit/CD3-Export-All-Resources.xlsx"
+
+
+      # - name: Debug File Output
+      #   run: |
+      #    echo "Looking for: /cd3user/tenancies/vishal/CD3-Blank-template.xlsx "
+      #    ls -lh /cd3user/tenancies/vishal
+
+      # - name: 'Upload CD3 Excel Output'
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: cd3-output
+      #     path: /cd3user/tenancies/vishal/CD3-Blank-template.xlsx 

@@ -1,0 +1,1076 @@
+# This workflow installs the latest version of OCI CLI and configures the OCI CLI configuration file
+# with an API token for the Oracle Cloud (cloud.oracle.com). OCI Resource Manager is used to manage the terraform and tfstate file.
+# this workflow will run `terraform init`, and `terraform plan`. On successful pull request merge `terraform apply` will be executed.
+
+
+on:
+
+  workflow_call:
+    inputs:
+      PROVIDER_NAME:
+        type: string
+      BRANCH_NAME:
+        type: string
+      STACK_NAME:
+        type: string
+      WORKING_DIRECTORY:
+        type: string
+      REPO_URL:
+        type: string
+      TF_VERSION:
+        type: string
+      REGION:
+        type: string
+      CLONE_REPO:
+        type: string
+      LOCAL_PATH:
+        type: string
+      COMPARTMENT_NAME:
+        type: string
+      TF_VARIABLES:
+        type: string
+
+    secrets:
+      USER_OCID:
+        required: true
+      FINGERPRINT:
+        required: true
+      COMPARTMENT_OCID:
+        required: true
+      REGION:
+        required: true
+      TENANCY_OCID:
+        required: true
+      PRIVATE_KEY_FILE:
+        required: true
+      PAT:
+        required: true
+      EMAIL_ID:
+        required: true
+      SMTP_USERNAME:
+        required: true
+      SMTP_PASSWORD:
+        required: true
+env:
+
+  # ---------------------------------------------
+  # Source Provider Details
+  # ---------------------------------------------
+
+  PROVIDER_NAME: ${{ inputs.PROVIDER_NAME }}
+  REGION: ${{ inputs.REGION }}
+  BRANCH_NAME: ${{ inputs.BRANCH_NAME }}
+  STACK_NAME: ${{ inputs.STACK_NAME }}
+  WORKING_DIRECTORY: ${{ inputs.WORKING_DIRECTORY }}
+  REPO_URL: ${{ inputs.REPO_URL }}
+  TF_VERSION: ${{ inputs.TF_VERSION }}
+  CLONE_REPO: ${{ inputs.CLONE_REPO }}
+  LOCAL_PATH: ${{ inputs.LOCAL_PATH }}
+  COMPARTMENT_NAME: ${{ inputs.COMPARTMENT_NAME }}
+  TF_VARIABLES: ${{ inputs.TF_VARIABLES }}
+  # TF_JSON: ${{ inputs.TF_JSON }}
+  
+# ---------------------------------------------
+# Permissions
+# ---------------------------------------------
+
+permissions:
+  contents: write
+
+jobs:
+  STACK:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ---------------------------------------------
+      # Checkout current repository
+      # ---------------------------------------------
+
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          ref: 'master'
+
+      # ---------------------------------------------
+      #  Checkout the repository from caller
+      # ---------------------------------------------
+
+      - name: checkout "${{ github.event.client_payload.clone_repo }}"
+        uses: actions/checkout@v3
+        with:
+          repository: "${{ github.event.client_payload.clone_repo }}"
+          path: "${{ github.event.client_payload.local_path }}"
+          token: "${{ secrets.PAT }}"
+
+      # ---------------------------------------------
+      #  Remove git config files
+      # ---------------------------------------------
+
+      - name: 'Remove git config files'
+        env:
+          local_path: ${{ github.event.client_payload.local_path }}
+        run: |
+          rm -rf $local_path/.git
+
+
+      # ---------------------------------------------
+      #  Writing config files
+      # ---------------------------------------------
+
+      - name: 'Writing config files'
+        run: |
+          rm -rf ~/.oci
+          mkdir ~/.oci
+          cd ~/.oci
+          echo "[DEFAULT]" >> config
+          echo "user=${{secrets.USER_OCID}}" >> config
+          echo "fingerprint=${{secrets.FINGERPRINT}}" >> config
+          echo "compartment_ocid=${{secrets.COMPARTMENT_OCID}}" >> config
+          echo "region=${{secrets.REGION}}" >> config
+          echo "tenancy=${{secrets.TENANCY_OCID}}" >> config
+          echo "key_file=/home/runner/.oci/key.pem" >> config
+          echo "${{secrets.PRIVATE_KEY_FILE}}" > /home/runner/.oci/key.pem
+          echo "~/.oci/config file "
+          cat ~/.oci/config
+          echo " ~/.oci/key.pem file"
+          ls -lta ~/.oci
+          ls -lta ~
+          cd ~
+ 
+
+
+
+      # ---------------------------------------------
+      #  Install OCI CLI
+      # ---------------------------------------------
+
+      - name: 'Install OCI CLI'
+        run: |
+          curl -L -O https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh
+          chmod +x install.sh
+          ./install.sh --accept-all-defaults
+          #exec -l $SHELL
+          echo " Fixing file permissions and testing oci"
+          cp /home/runner/bin/oci /usr/local/bin/oci
+          echo "OCI CLI version"
+          oci --version
+          /home/runner/bin/oci setup repair-file-permissions --file ~/.oci/config
+          /home/runner/bin/oci setup repair-file-permissions --file ~/.oci/key.pem
+          echo "# ---------------------------------------------"
+          echo "#  Authenticating to OCI"
+          echo "# ---------------------------------------------"
+          /home/runner/bin/oci os ns get
+          if [ $? -ne 0 ]; then
+            echo "Authentication failed"
+            exit 1
+          else
+            echo "Authentication is successful"
+          fi
+      
+    # ---------------------------------------------
+    #  Updating 
+    # ---------------------------------------------
+
+      # - name: Add compartment_ocid to JSON
+      #   run: |
+      #     jq '. + {"compartment_ocid": "value"}' $WORKING_DIRECTORY/tfvars.json > tmp.json
+      #     mv tmp.json $WORKING_DIRECTORY/tfvars.json
+     
+      - name: 'Checking JSON File'
+        env:
+          WORKING_DIRECTORY: ${{ github.event.client_payload.working_directory }}
+          compartment_name: ${{ github.event.client_payload.tf_variables.compartment_name }}
+        run: |
+          echo '{}' > tmp.json
+          echo '${{ toJson(github.event.client_payload.tf_variables) }}' > get_copilot_variables.json
+          # compartment_name="${{ env.compartment_name }}"
+          tenancy_ocid="${{ secrets.TENANCY_OCID }}"
+
+          if [ "${{ env.compartment_name }}" == "root" ] || [ "${{ env.compartment_name }}" == "" ]; then
+            echo "Using tenancy OCID for root/empty compartment name"
+            compartment_ocid=$tenancy_ocid
+            echo "compartment_ocid=$tenancy_ocid" >> $GITHUB_ENV
+            echo "Compartment OCID is TENANCY_OCID"
+          else
+            compartment_ocid="$(/home/runner/bin/oci iam compartment list --name "$compartment_name" | jq -r '.data[].id')"
+            echo "compartment_ocid=$compartment_ocid" >> $GITHUB_ENV
+            jq --arg ocid "$compartment_ocid" '.["compartment_ocid"] = $ocid' tmp.json > new.json && mv new.json tmp.json
+            echo "Compartment OCID is $compartment_ocid"
+          fi
+
+          if [ "${{ env.REGION }}" == "" ] || [ "${{ env.REGION }}" == "null" ] || [ "${{ env.REGION }}" == "NA" ]; then
+            echo "REGION is not set, using default region from secrets"
+            jq --arg region "${{secrets.REGION}}" '.["region"] = $region' tmp.json > new.json && mv new.json tmp.json
+          else
+            echo "REGION is set, using the same as the environment variable"
+            jq --arg region "${{ env.REGION }}" '.["region"] = $region' tmp.json > new.json && mv new.json tmp.json
+          fi
+
+          jq --arg tenancy_ocid "${{secrets.TENANCY_OCID}}" '.["tenancy_ocid"] = $tenancy_ocid' tmp.json > new.json && mv new.json tmp.json
+          jq --arg ocid "$compartment_ocid" '.["compartment_ocid"] = $ocid' tmp.json > new.json
+          ls -lrth
+          
+          if [ -f "$WORKING_DIRECTORY/tfvars.json" ]; then
+            jq -s '.[0] * .[1]' $WORKING_DIRECTORY/tfvars.json new.json > updated.json
+            mv updated.json $WORKING_DIRECTORY/tfvars.json
+            cat $WORKING_DIRECTORY/tfvars.json
+            echo "$WORKING_DIRECTORY"
+            echo "first IF"
+          else
+            echo "Existing JSON file not found." 
+            mv new.json $WORKING_DIRECTORY/tfvars.json
+            cat $WORKING_DIRECTORY/tfvars.json
+          fi
+
+      # ---------------------------------------------
+      #   Convert JSON to variables.tf 
+      # ---------------------------------------------          
+      - name: Convert JSON to variables.tf
+        env:
+          WORKING_DIRECTORY: ${{ github.event.client_payload.working_directory }}
+        run: |
+          rm -rf $WORKING_DIRECTORY/terraform.tfvars
+          touch $WORKING_DIRECTORY/terraform.tfvars
+          cat << 'EOF' > update_tfvars.sh
+          #!/usr/bin/env bash
+          set -e
+
+          # Input JSON file and output tfvars file (defaults provided)
+          JSON_FILE="${1:-variables.json}"
+          TFVARS_FILE="${2:-terraform.tfvars}"
+
+          # Create tfvars file if it doesn't exist
+          [ ! -f "$TFVARS_FILE" ] && touch "$TFVARS_FILE"
+
+          # Backup the original tfvars file just in case
+          cp "$TFVARS_FILE" "${TFVARS_FILE}.bak"
+
+          # Process each key in the JSON file
+          for key in $(jq -r 'keys[]' "$JSON_FILE"); do
+            # Determine the type of the JSON value for this key
+            val_type=$(jq -r ".\"$key\" | type" "$JSON_FILE")
+
+            if [ "$val_type" == "array" ]; then
+              # For arrays, use the compact JSON representation (preserving the brackets)
+              new_line="$key = $(jq -c ".\"$key\"" "$JSON_FILE")"
+            elif [ "$val_type" == "string" ]; then
+              # For strings, add double quotes
+              value=$(jq -r ".\"$key\"" "$JSON_FILE")
+              new_line="$key = \"$value\""
+            elif [ "$val_type" == "boolean" ] || [ "$val_type" == "number" ] || [ "$val_type" == "object" ]; then
+              # For booleans, numbers, and objects, use the JSON representation without extra quotes
+              new_line="$key = $(jq -c ".\"$key\"" "$JSON_FILE")"
+            else
+              # Fallback: treat as a string if the type is unexpected
+              value=$(jq -r ".\"$key\"" "$JSON_FILE")
+              new_line="$key = \"$value\""
+            fi
+
+            # Use AWK to update an existing line for the key or append a new one if it doesn't exist
+            awk -v key="$key" -v new_line="$new_line" '
+              BEGIN { replaced=0 }
+              {
+                # Match a line that starts with the key (with optional spaces) and an equals sign
+                if ($0 ~ "^[[:space:]]*"key"[[:space:]]*=") {
+                  print new_line
+                  replaced=1
+                } else {
+                  print
+                }
+              }
+              END {
+                if (replaced == 0) {
+                  print new_line
+                }
+              }
+            ' "$TFVARS_FILE" > "${TFVARS_FILE}.tmp"
+
+            mv "${TFVARS_FILE}.tmp" "$TFVARS_FILE"
+          done
+
+          EOF
+
+          chmod +x update_tfvars.sh
+          ./update_tfvars.sh get_copilot_variables.json "$WORKING_DIRECTORY/terraform.tfvars"
+          cat "$WORKING_DIRECTORY/terraform.tfvars"
+          # cat "$WORKING_DIRECTORY/terraform.tfvars > $WORKING_DIRECTORY/terraform.tfvars
+      # - name: Make script executable
+      #   run: chmod +x update_defaults.sh
+
+      # Configure Git
+      - name: Set up Git configuration
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+
+      - name: 'Get Tenancy and Repo Name'
+        run: |
+          echo "TENANCY_NAME=$(/home/runner/bin/oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}} | jq -r '.data.name')"  >> $GITHUB_ENV
+          # echo "TENANCY_NAME=$(oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}})
+          # TENANCY_NAME=$(oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}} | jq -r '.data.name')
+          /home/runner/bin/oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}} | jq -r '.data.name'
+          echo "${TENANCY_NAME}"
+          echo "REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)" >> $GITHUB_ENV
+          
+      - name: 'Set Repo directory'
+        run: |
+          echo "REPO_DIR=/home/runner/work/${{ env.REPO_NAME }}/${{ env.REPO_NAME }}" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: 'Set Zone Name'
+        run: |
+          echo "ZONE_NAME=${{ env.STACK_NAME }}" >> $GITHUB_ENV
+
+      - name: Call OCI ATP ORDS
+        run: python scripts/make_http_calls.py
+        env:
+          ATP_HOST: "https://g246e9c57cbc23f-aiagents4biz.adb.us-ashburn-1.oraclecloudapps.com/ords/aiagents4biz/users/"
+          BASIC_USER: "AIAGENTS4BIZ"
+          BASIC_PASS: "StrongP@ssw0rd123!"
+          OUTPUT_FILE: response.json
+          # Example: query by user_id
+          Q_PARAM: '{"email":"${{ secrets.EMAIL_ID }}"}'
+ 
+          # If you sometimes need to send email instead, just override:
+          # Q_PARAM: '{"email":"someone@example.com"}'
+
+          # If you want to POST with a JSON body, set BODY_JSON and HTTP_METHOD:
+          HTTP_METHOD: "GET"
+          # BODY_JSON: '{"some_key":"some_value"}'
+      
+      
+      - name: 'Set USER_ID_IN_DB and ACCOUNT_ID_IN_DB'
+        run: |
+          
+          echo "USER_ID_IN_DB=$(cat response.json | jq '.response.items[].user_id' | tr -d '"')" >> $GITHUB_ENV
+          echo "ACCOUNT_ID_IN_DB=$(cat response.json | jq '.response.items[].account_id' | tr -d '"')" >> $GITHUB_ENV
+
+      - name: 'Get CREDENTIAL_ID from CLOUD_CREDENTIALS table'
+        run: python scripts/make_http_calls.py
+        env:
+          ATP_HOST: "https://g246e9c57cbc23f-aiagents4biz.adb.us-ashburn-1.oraclecloudapps.com/ords/aiagents4biz/cloud_credentials/"
+          BASIC_USER: "AIAGENTS4BIZ"
+          BASIC_PASS: "StrongP@ssw0rd123!"
+          OUTPUT_FILE: get_cloud_creds_id_response.json
+          # Example: query by user_id
+          Q_PARAM: '{"user_id":"${{ env.USER_ID_IN_DB }}"}'
+ 
+          # If you sometimes need to send email instead, just override:
+          # Q_PARAM: '{"email":"someone@example.com"}'
+
+          # If you want to POST with a JSON body, set BODY_JSON and HTTP_METHOD:
+          HTTP_METHOD: "GET"
+      
+      - name: 'Get CREDENTIAL_ID from LANDING_ZONES table'
+        run: python scripts/make_http_calls.py
+        env:
+          ATP_HOST: "https://g246e9c57cbc23f-aiagents4biz.adb.us-ashburn-1.oraclecloudapps.com/ords/aiagents4biz/landing_zones/"
+          BASIC_USER: "AIAGENTS4BIZ"
+          BASIC_PASS: "StrongP@ssw0rd123!"
+          OUTPUT_FILE: get_zone_id_response.json
+          # Example: query by user_id
+          Q_PARAM: '{"provisioned_by": "${{ env.USER_ID_IN_DB }}", "zone_name": "${{ env.ZONE_NAME }}"}'
+ 
+          # If you sometimes need to send email instead, just override:
+          # Q_PARAM: '{"email":"someone@example.com"}'
+
+          # If you want to POST with a JSON body, set BODY_JSON and HTTP_METHOD:
+          HTTP_METHOD: "GET"
+
+      - name: 'Get account_id, credential_id'
+        run: |
+          CREDENTIAL_ID=$(jq -r '.response.items[0].credential_id' get_cloud_creds_id_response.json)
+          ZONE_ID=$(jq -r '.response.items[0].zone_id' get_zone_id_response.json)
+          echo CREDENTIAL_ID_IN_DB=$CREDENTIAL_ID >> $GITHUB_ENV
+          echo ZONE_ID_IN_DB=$ZONE_ID >> $GITHUB_ENV
+
+      - name: 'Update the landing zone if exists'
+        # if: ${{ env.ZONE_ID_IN_DB != 'null' }}
+        run: | 
+          python scripts/make_http_calls.py
+          cat response.json
+          cat get_cloud_creds_id_response.json
+          cat get_zone_id_response.json
+          cat update_landing_zone_response.json
+        env:
+          ATP_HOST: "https://g246e9c57cbc23f-aiagents4biz.adb.us-ashburn-1.oraclecloudapps.com/ords/aiagents4biz/landing_zones/${{ env.ZONE_ID_IN_DB }}"
+          BASIC_USER: "AIAGENTS4BIZ"
+          BASIC_PASS: "StrongP@ssw0rd123!"
+          OUTPUT_FILE: update_landing_zone_response.json
+          # Example: query by user_id
+          # Q_PARAM: '{"zone_id":"${{ env.ZONE_ID_IN_DB }}"}'
+ 
+          # If you sometimes need to send email instead, just override:
+          # Q_PARAM: '{"email":"someone@example.com"}'
+
+          # If you want to POST with a JSON body, set BODY_JSON and HTTP_METHOD:
+          HTTP_METHOD: "PUT"
+          BODY_JSON: '{"zone_id": "${{ env.ZONE_ID_IN_DB }}", "credential_id": "${{ env.CREDENTIAL_ID_IN_DB }}", "account_id": "${{ env.ACCOUNT_ID_IN_DB }}", "zone_name": "${{ env.ZONE_NAME }}", "cloud_provider": "OCI", "provisioned_by": "${{ env.USER_ID_IN_DB }}", "status": "INPROGRESS" }'
+          
+
+      # ---------------------------------------------
+      #  Check for provider
+      # ---------------------------------------------
+
+      - name: 'Check for provider'
+        run: |
+          echo "SOURCE_PROVIDER_ID=$(/home/runner/bin/oci resource-manager configuration-source-provider list \
+            --compartment-id ${{ secrets.COMPARTMENT_OCID }} | jq '.data.items[] | select(."display-name"==env.PROVIDER_NAME).id' -r)" >> $GITHUB_ENV
+          if [ $? -ne 0 ]; then
+            echo "No SOURCE_PROVIDER found with the name ${{env.PROVIDER_NAME}}"
+            echo "Creating a new SOURCE_PROVIDER with the name ${{env.PROVIDER_NAME}}"
+            echo "SOURCE_PROVIDER_ID=$(/home/runner/bin/oci resource-manager configuration-source-provider create-github-access-token-provider --access-token ${{ secrets.PAT }} --api-endpoint https://github.com/ebizon-cloud-llc --compartment-id ${{ secrets.COMPARTMENT_OCID }} --display-name $PROVIDER_NAME  | jq -r '.data.id')" >> $GITHUB_ENV
+          fi
+          echo ${{env.SOURCE_PROVIDER_ID}}
+
+      # ---------------------------------------------
+      # Terminate here if no SOURCE_PROVIDER_ID found
+      # ---------------------------------------------
+
+      - name: 'Create if no SOURCE_PROVIDER_ID found'
+        if: ${{ env.SOURCE_PROVIDER_ID == '' }}
+        run: |
+          echo "SOURCE_PROVIDER_ID=$(/home/runner/bin/oci resource-manager configuration-source-provider create-github-access-token-provider --access-token ${{ secrets.PAT }} --api-endpoint https://github.com/ebizon-cloud-llc --compartment-id ${{ secrets.COMPARTMENT_OCID }} --display-name $PROVIDER_NAME  | jq -r '.data.id')" >> $GITHUB_ENV
+          echo "No SOURCE_PROVIDER found with the name ${{env.PROVIDER_NAME}}"
+          echo "Creating a new SOURCE_PROVIDER with the name ${{env.PROVIDER_NAME}}"
+
+
+      # ---------------------------------------------
+      # Check for existing stack
+      # ---------------------------------------------
+
+      - name: 'Check for existing stack'
+        run: |
+          echo "STACK_ID=$(/home/runner/bin/oci resource-manager stack list --all --compartment-id ${{secrets.COMPARTMENT_OCID}} | jq '.data[] | select(."display-name"==env.STACK_NAME).id' -r)" >> $GITHUB_ENV
+          echo "$STACK_ID"
+
+      # ---------------------------------------------
+      # Move variables.tf to $WORKING_DIRECTORY
+      # ---------------------------------------------
+
+      - name: 'Move variables.tf to $WORKING_DIRECTORY'
+        run: |
+          
+          if [ -d "$WORKING_DIRECTORY/orm" ]; then
+            echo "Skipping provider.tf update because 'orm' folder exists."
+            rm -rf $WORKING_DIRECTORY/variables.tf $WORKING_DIRECTORY/provider.tf tmp.json install.sh
+            cp $WORKING_DIRECTORY/orm/variables.tf $WORKING_DIRECTORY/orm/provider.tf $WORKING_DIRECTORY
+          else
+            sed -i '/provider "oci"/,/}/ { /\(tenancy_ocid\|user_ocid\|fingerprint\|private_key_path\|private_key_password\|api_private_key\|api_signing_key\)/I d }' "$WORKING_DIRECTORY"/*.tf
+            # sed -i '/provider "oci"/,/}/ { /\(tenancy_ocid\|user_ocid\|fingerprint\|private_key_path\|private_key_password\)/d }' "$WORKING_DIRECTORY/provider.tf"
+            # sed -i '/\(tenancy_ocid\|user_ocid\|fingerprint\|private_key_path\|private_key_password\)/d' $WORKING_DIRECTORY/provider.tf
+            # echo "provider "oci" {" > $WORKING_DIRECTORY/provider.tf
+            # echo "region = var.region" >> $WORKING_DIRECTORY/provider.tf
+            # echo "}" >> $WORKING_DIRECTORY/provider.tf
+            # echo "provider.tf has been created/overwritten."
+          fi
+      
+      # ---------------------------------------------------
+      # Commit and push the new file to the dev branch
+      # ---------------------------------------------------
+
+      - name: Commit and push changes
+        run: |
+          pwd
+          ls -lrth $WORKING_DIRECTORY
+          git add -f "$WORKING_DIRECTORY/terraform.tfvars"
+          git add -f $local_path/*
+          git commit -m "Add JSON file to dev branch" || echo "No changes to commit" 
+          if [ $? -ne 0 ]; then
+            echo "No changes to push, continuing with the rest of the script"
+            exit 0
+          fi
+          git push origin $BRANCH_NAME
+          
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          local_path: ${{ github.event.client_payload.local_path }}
+          WORKING_DIRECTORY: ${{ github.event.client_payload.working_directory }}
+
+      # ---------------------------------------------
+      # Create Stack
+      # ---------------------------------------------
+
+      - name: 'Create Stack'
+        if: ${{env.STACK_ID == ''}}
+        run: |
+          echo "STACK_ID=$(/home/runner/bin/oci resource-manager stack create-from-git-provider \
+            --compartment-id ${{secrets.COMPARTMENT_OCID}} \
+            --config-source-configuration-source-provider-id $SOURCE_PROVIDER_ID \
+            --config-source-branch-name $BRANCH_NAME \
+            --config-source-repository-url $REPO_URL \
+            --display-name $STACK_NAME \
+            --config-source-working-directory $WORKING_DIRECTORY \
+            --terraform-version $TF_VERSION \
+            --variables file://$WORKING_DIRECTORY/tfvars.json | jq '.data.id' -r)" >> $GITHUB_ENV
+          echo "$STACK_ID"
+          if [ $? -ne 0 ]; then
+            exit 1
+          fi
+
+
+      # ---------------------------------------------
+      # Update Stack
+      # ---------------------------------------------
+      - name: 'Update Stack  '
+        if: ${{env.STACK_ID != ''}}
+        run: |
+          echo "$STACK_ID"
+          /home/runner/bin/oci resource-manager stack update-from-git-provider \
+            --config-source-configuration-source-provider-id $SOURCE_PROVIDER_ID \
+            --stack-id $STACK_ID \
+            --config-source-branch-name $BRANCH_NAME \
+            --config-source-repository-url $REPO_URL \
+            --config-source-working-directory $WORKING_DIRECTORY \
+            --terraform-version $TF_VERSION \
+            --variables file://$WORKING_DIRECTORY/tfvars.json \
+            --wait-for-state ACTIVE \
+            --force
+
+      # ---------------------------------------------
+      # Terraform Plan for the stack
+      # ---------------------------------------------
+
+      - name: 'Terraform Plan for the stack'
+        if: ${{env.STACK_ID != ''}}
+        run: |
+          echo "PLAN_JOB_ID=$(/home/runner/bin/oci resource-manager job create-plan-job \
+            --stack-id $STACK_ID | jq '.data.id' -r)" >> $GITHUB_ENV
+
+      # ---------------------------------------------
+      # Waiting for Terraform Plan to complete
+      # ---------------------------------------------
+
+      - name: 'Waiting for Terraform Plan to complete'
+        if: ${{env.PLAN_JOB_ID != ''}}
+        run: |
+          while true
+          do
+            JOB_STATUS=$(/home/runner/bin/oci resource-manager job get --job-id ${{env.PLAN_JOB_ID}}  | jq '.data' | grep lifecycle-state | awk '{print $2}' | tr -d '"' | tr -d ',')
+            if [ "$JOB_STATUS" == "SUCCEEDED" ]; then
+              echo "Terraform Plan: $JOB_STATUS"
+              exit 0
+              break
+            elif [ "$JOB_STATUS" == "FAILED" ] || [ "$JOB_STATUS" == "CANCELING" ] || [ "$JOB_STATUS" == "CANCELED" ]; then
+              echo "Terraform Plan: $JOB_STATUS"
+              break
+              exit 1
+            else
+              echo "Terraform Plan: $JOB_STATUS"
+              sleep 10
+            fi
+          done
+
+
+      # ---------------------------------------------
+      # Terraform plan output to GitHub
+      # ---------------------------------------------
+
+      - name: "Terraform plan output to GitHub"
+        if : ${{env.PLAN_JOB_ID != ''}}
+        run: |
+          /home/runner/bin/oci resource-manager job get-job-logs-content \
+            --job-id $PLAN_JOB_ID --output table > ~/tf_plan_output.log
+
+      # --------------------------------------------------
+      # Display the terraform plan on Github console
+      # --------------------------------------------------
+
+      - name: "Display the terraform plan on Github console "
+        run: |
+          JOB_STATUS=$(/home/runner/bin/oci resource-manager job get --job-id ${{env.PLAN_JOB_ID}}  | jq '.data' | grep lifecycle-state | awk '{print $2}' | tr -d '"' | tr -d ',')
+          if [ "$JOB_STATUS" == "SUCCEEDED" ]; then
+            echo "Terraform Plan: $JOB_STATUS"
+            cat ~/tf_plan_output.log
+          else
+            echo "Terraform Plan: $JOB_STATUS"
+            cat ~/tf_plan_output.log
+            exit 1
+          fi
+
+
+
+
+      # --------------------------------------------------
+      # Create a script to validate tf plan
+      # --------------------------------------------------
+
+      - name: "Create a script to validate tf plan"
+        run: |
+          echo '#!/bin/sh' > ~/validate_tfplan.sh
+          echo 'plan=$(grep -c "No changes. Infrastructure is up-to-date\|No changes. Your infrastructure matches the configuration" ~/tf_plan_output.log)' >> ~/validate_tfplan.sh  
+          echo 'if [ ${plan} -ne 0 ]' >> ~/validate_tfplan.sh
+          echo 'then' >> ~/validate_tfplan.sh
+          echo 'echo yes' >> ~/validate_tfplan.sh
+          echo 'else' >> ~/validate_tfplan.sh
+          echo 'echo no' >> ~/validate_tfplan.sh
+          echo 'fi' >> ~/validate_tfplan.sh
+          cat ~/validate_tfplan.sh
+          chmod 755 ~/validate_tfplan.sh
+      
+      # --------------------------------------------------
+      # Validate  ####
+      # --------------------------------------------------
+
+
+      - name: "Validate"
+        run: echo "SKIP_TF_APPLY=$(sh ~/validate_tfplan.sh)" >> $GITHUB_ENV
+      
+      # --------------------------------------------------
+      # SKIP_APPLY from env variables is
+      # --------------------------------------------------
+
+      - name: "SKIP_APPLY from env variables is "
+        run: echo "${{env.SKIP_TF_APPLY}}"
+
+
+      # --------------------------------------------------
+      # Terraform Apply for the stack   ####
+      # --------------------------------------------------
+
+      - name: 'Terraform Apply for the stack'
+        if: ${{env.PLAN_JOB_ID != '' && env.SKIP_TF_APPLY == 'no' }}
+        run: |
+          echo "APPLY_JOB_ID=$(/home/runner/bin/oci resource-manager job create-apply-job \
+            --execution-plan-strategy FROM_PLAN_JOB_ID \
+            --execution-plan-job-id $PLAN_JOB_ID \
+            --stack-id $STACK_ID \
+              | jq '.data.id' -r)" >> $GITHUB_ENV
+
+      # --------------------------------------------------
+      #  Wait for Terraform Apply to complete  
+      # --------------------------------------------------
+
+      - name: 'Wait for Terraform Apply to complete'
+        if: ${{env.APPLY_JOB_ID != ''}}
+        run: |
+          while true
+          do
+            JOB_STATUS=$(/home/runner/bin/oci resource-manager job get --job-id ${{env.APPLY_JOB_ID}}  | jq '.data' | grep lifecycle-state | awk '{print $2}' | tr -d '"' | tr -d ',')
+            if [ "$JOB_STATUS" == "SUCCEEDED" ]; then
+              echo "Terraform Apply: $JOB_STATUS"
+              break
+            elif [ "$JOB_STATUS" == "FAILED" ] || [ "$JOB_STATUS" == "CANCELING" ] || [ "$JOB_STATUS" == "CANCELED" ]; then
+              echo "Terraform Apply: $JOB_STATUS"
+              break
+              exit 1
+            else
+              echo "Terraform Apply: $JOB_STATUS"
+              sleep 30
+            fi
+          done
+
+      # --------------------------------------------------
+      # Saving the terraform apply output to GitHub 
+      # --------------------------------------------------
+
+      - name: 'Saving the terraform apply output to GitHub'
+        if : ${{env.APPLY_JOB_ID != ''}}
+        run: |
+          /home/runner/bin/oci resource-manager job get-job-logs-content \
+            --job-id $APPLY_JOB_ID --output table > ~/tf_apply_output.log
+
+      # --------------------------------------------------
+      # Create a script to validate tf apply 
+      # --------------------------------------------------
+
+      - name: "Create a script to validate tf apply job if tf apply job get failed"
+        run: |
+          echo '#!/bin/sh' > ~/validate_tfapply.sh
+          echo 'apply=$(grep -c "400-InvalidParameter" ~/tf_apply_output.log)' >> ~/validate_tfapply.sh  
+          echo 'if [ ${apply} -ne 0 ]' >> ~/validate_tfapply.sh
+          echo 'then' >> ~/validate_tfapply.sh
+          echo 'echo yes' >> ~/validate_tfapply.sh
+          echo 'else' >> ~/validate_tfapply.sh
+          echo 'echo no' >> ~/validate_tfapply.sh
+          echo 'fi' >> ~/validate_tfapply.sh
+          cat ~/validate_tfapply.sh
+          chmod 755 ~/validate_tfapply.sh
+
+      # --------------------------------------------------
+      # Validate terraform apply job  
+      # --------------------------------------------------
+
+      - name: "Validate terraform apply job for errors"
+        if: ${{env.APPLY_JOB_ID != ''}}
+        run: echo "RUN_TF_APPLY_AGAIN=$(sh ~/validate_tfapply.sh)" >> $GITHUB_ENV
+      
+      # --------------------------------------------------
+      # RUN_TF_APPLY_AGAIN from env variables is
+      # --------------------------------------------------
+
+      - name: "RUN_TF_APPLY_AGAIN from env variables is "
+        if: ${{env.APPLY_JOB_ID != ''}}
+        run: echo "${{env.RUN_TF_APPLY_AGAIN}}"
+
+      #--------------------------------------------------
+      # Terraform Apply for the stack   
+      #--------------------------------------------------
+
+      - name: 'Running Terraform Apply for the stack again'
+        if: ${{env.PLAN_JOB_ID != '' && env.SKIP_TF_APPLY == 'no' && env.RUN_TF_APPLY_AGAIN == 'yes'}}
+        run: |
+          echo "APPLY_JOB_ID=$(/home/runner/bin/oci resource-manager job create-apply-job \
+            --execution-plan-strategy AUTO_APPROVED \
+            --stack-id $STACK_ID \
+              | jq '.data.id' -r)" >> $GITHUB_ENV
+
+      # --------------------------------------------------
+      #  Wait for Terraform Apply to complete  
+      # --------------------------------------------------
+
+      - name: 'Wait for Terraform Apply to complete'
+        if: ${{env.APPLY_JOB_ID != ''}}
+        run: |
+          while true
+          do
+            JOB_STATUS=$(/home/runner/bin/oci resource-manager job get --job-id ${{env.APPLY_JOB_ID}}  | jq '.data' | grep lifecycle-state | awk '{print $2}' | tr -d '"' | tr -d ',')
+            if [ "$JOB_STATUS" == "SUCCEEDED" ]; then
+              echo "Terraform Apply: $JOB_STATUS"
+              break
+            elif [ "$JOB_STATUS" == "FAILED" ] || [ "$JOB_STATUS" == "CANCELING" ] || [ "$JOB_STATUS" == "CANCELED" ]; then
+              echo "Terraform Apply: $JOB_STATUS"
+              break
+            else
+              echo "Terraform Apply: $JOB_STATUS"
+              sleep 30
+            fi
+          done
+          echo APPLY_JOB_STATUS=$JOB_STATUS >> $GITHUB_ENV
+          
+      - name: 'Update the landing zone if exists'
+        if: ${{ env.ZONE_ID_IN_DB != 'null' || env.ZONE_ID_IN_DB != ''}}
+        run: | 
+          python scripts/make_http_calls.py
+          cat update_landing_zone_response.json
+        env:
+          ATP_HOST: "https://g246e9c57cbc23f-aiagents4biz.adb.us-ashburn-1.oraclecloudapps.com/ords/aiagents4biz/landing_zones/${{ env.ZONE_ID_IN_DB }}"
+          BASIC_USER: "AIAGENTS4BIZ"
+          BASIC_PASS: "StrongP@ssw0rd123!"
+          OUTPUT_FILE: update_landing_zone_response.json
+          # Example: query by user_id
+          # Q_PARAM: '{"zone_id":"${{ env.ZONE_ID_IN_DB }}"}'
+ 
+          # If you sometimes need to send email instead, just override:
+          # Q_PARAM: '{"email":"someone@example.com"}'
+
+          # If you want to POST with a JSON body, set BODY_JSON and HTTP_METHOD:
+          HTTP_METHOD: "PUT"
+          BODY_JSON: '{"zone_id": "${{ env.ZONE_ID_IN_DB }}", "credential_id": "${{ env.CREDENTIAL_ID_IN_DB }}", "account_id": "${{ env.ACCOUNT_ID_IN_DB }}", "zone_name": "${{ env.ZONE_NAME }}", "cloud_provider": "OCI", "provisioned_by": "${{ env.USER_ID_IN_DB }}", "status": "${{ env.APPLY_JOB_STATUS }}" }'
+      
+      # --------------------------------------------------
+      # Saving the terraform apply output to GitHub 
+      # --------------------------------------------------
+
+      - name: 'Saving the terraform apply output to GitHub'
+        if : ${{env.APPLY_JOB_ID != ''}}
+        run: |
+          /home/runner/bin/oci resource-manager job get-job-logs-content \
+            --job-id $APPLY_JOB_ID --output table > ~/tf_apply_output.log
+
+      # --------------------------------------------------
+      # Display the terraform apply output on console
+      # --------------------------------------------------
+    
+      - name: "Display the terraform apply output on GitHub console"
+        if : ${{env.APPLY_JOB_ID != ''}}
+        run: |
+          JOB_STATUS=$(/home/runner/bin/oci resource-manager job get --job-id ${{env.APPLY_JOB_ID}}  | jq '.data' | grep lifecycle-state | awk '{print $2}' | tr -d '"' | tr -d ',')
+          if [ "$JOB_STATUS" == "SUCCEEDED" ]; then
+            echo "Terraform apply: $JOB_STATUS"
+            cat ~/tf_apply_output.log
+            exit 0
+          elif [ "$JOB_STATUS" == "FAILED" ]; then
+            echo "Terraform apply: $JOB_STATUS"
+            cat ~/tf_apply_output.log
+            exit 1
+          elif [ "$JOB_STATUS" == "IN_PROGRESS" ] || [ "$JOB_STATUS" == "ACCEPTED" ] || [ "$JOB_STATUS" == "CANCELING" ]; then
+            echo "Terraform apply: $JOB_STATUS"
+            cat ~/tf_apply_output.log
+          else
+            echo "Your Job is cancelled"
+          fi
+
+  CD3_EXPORT:
+    runs-on: self-hosted
+    needs: STACK
+    steps:
+      # ---------------------------------------------
+      # Checkout  
+      # ---------------------------------------------
+
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          ref: 'master'
+
+      # ---------------------------------------------
+      # Update tfvars.json file  
+      # ---------------------------------------------
+
+      # - name: 'Update tfvars.json file'
+      #   run: |
+      #     echo '${{ toJson(github.event.client_payload) }}' > new.json
+      #     jq -s '.[0] * .[1]' $WORKING_DIRECTORY/tfvars.json new.json > updated.json
+      #     mv updated.json $WORKING_DIRECTORY/tfvars.json
+
+      # ---------------------------------------------
+      #  Writing config files
+      # ---------------------------------------------
+
+      - name: 'Writing config files'
+        run: |
+          rm -rf ~/.oci
+          mkdir ~/.oci
+          echo "[DEFAULT]" >> ~/.oci/config
+          echo "user=${{secrets.USER_OCID}}" >> ~/.oci/config
+          echo "fingerprint=${{secrets.FINGERPRINT}}" >> ~/.oci/config
+          echo "compartment_ocid=${{secrets.COMPARTMENT_OCID}}" >> ~/.oci/config
+          echo "region=${{secrets.REGION}}" >> ~/.oci/config
+          echo "tenancy=${{secrets.TENANCY_OCID}}" >> ~/.oci/config
+          echo "key_file=~/.oci/key.pem" >> ~/.oci/config
+          echo "${{secrets.PRIVATE_KEY_FILE}}" >> ~/.oci/key.pem
+          chmod 600 ~/.oci/key.pem
+          echo "~/.oci/config file "
+          cat ~/.oci/config
+          echo " ~/.oci/key.pem file"
+          ls -lta ~/.oci
+          ls -lta ~
+
+      # ---------------------------------------------
+      #  Install OCI CLI
+      # ---------------------------------------------
+
+      - name: 'Install OCI CLI'
+        run: |
+          # curl -L -O https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh
+          # chmod +x install.sh
+          # ./install.sh --accept-all-defaults
+          # echo "/home/ubuntu/bin" >> $GITHUB_PATH
+          # echo " Fixing file permissions and testing oci"
+          # /home/ubuntu/bin/oci setup repair-file-permissions --file ~/.oci/config
+          # /home/ubuntu/bin/oci setup repair-file-permissions --file ~/.oci/key.pem
+          # echo "# ---------------------------------------------"
+          # echo "#  Authenticating to OCI"
+          # echo "# ---------------------------------------------"
+          oci os ns get
+          if [ $? -ne 0 ]; then
+            echo "Authentication failed"
+            exit 1
+          else
+            echo "Authentication is successful"
+          fi
+      
+      
+      - name: 'Get Tenancy and Repo Name'
+        run: |
+          echo "TENANCY_NAME=$(oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}} | jq -r '.data.name')"  >> $GITHUB_ENV
+          # echo "TENANCY_NAME=$(oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}})
+          # TENANCY_NAME=$(oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}} | jq -r '.data.name')
+          oci iam tenancy get --tenancy-id ${{secrets.TENANCY_OCID}} | jq -r '.data.name'
+          echo "${TENANCY_NAME}"
+          echo "REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)" >> $GITHUB_ENV
+      - name: 'Set Repo directory'
+        run: |
+          echo "REPO_DIR=/home/ubuntu/actions-runner/_work/${{ env.REPO_NAME }}/${{ env.REPO_NAME }}" >> $GITHUB_ENV
+             
+      # # ---------------------------------------------
+      # # Install Terraform
+      # # ---------------------------------------------
+      # - name: Setup Terraform
+      #   uses: hashicorp/setup-terraform@v3
+      #   with:
+      #     terraform_version: ${{ inputs.TF_VERSION }}
+
+      # # ---------------------------------------------
+      # # Terraform Init & Plan
+      # # ---------------------------------------------
+      # - name: Terraform Init
+      #   run: terraform -chdir=${{ inputs.WORKING_DIRECTORY }} init
+
+      # - name: Terraform Plan
+      #   run: terraform -chdir=${{ inputs.WORKING_DIRECTORY }} plan
+
+      # # ---------------------------------------------
+      # # Terraform Apply (only on push to main)
+      # # ---------------------------------------------
+      # - name: Terraform Apply
+      #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      #   run: terraform -chdir=${{ inputs.WORKING_DIRECTORY }} apply -auto-approve
+
+      # ---------------------------------------------
+      # Install Python and CD3 dependencies
+      # ---------------------------------------------
+      - name: 'Set up Python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Expect
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y expect util-linux moreutils tclsh
+
+      - name: 'Install CD3 dependencies'
+        run: |
+          cp ~/.oci/config ~/.oci/config.txt
+          ls -lrth
+          pwd
+          cd cd3_automation_toolkit
+          pip install --upgrade pip
+          pip install -r pypackages.txt
+          pip install pyopenssl
+
+ 
+      
+      - name: 'Update Tenancy Config Properties file'
+        run: |
+          
+          echo "Listing files in current directory:"
+          ls -lrth
+          cd cd3_automation_toolkit/user-scripts
+          echo "Current Directory: $(pwd)"
+          echo "Updating tenancyconfig.properties file"
+          sed -i "s|^prefix=.*|prefix=${TENANCY_NAME}|" tenancyconfig.properties
+          sed -i "s|^tenancy_ocid=.*|tenancy_ocid=${{ secrets.TENANCY_OCID }}|" tenancyconfig.properties
+          sed -i "s|^region=.*|region=${{ secrets.REGION }}|" tenancyconfig.properties
+          sed -i "s|^user_ocid=.*|user_ocid=${{ secrets.USER_OCID }}|" tenancyconfig.properties
+          sed -i "s|^fingerprint=.*|fingerprint=${{ secrets.FINGERPRINT }}|" tenancyconfig.properties
+          sed -i "s|^key_path=.*|key_path=/home/ubuntu/.oci/key.pem|" tenancyconfig.properties
+          cat tenancyconfig.properties
+          
+      # ---------------------------------------------
+      # Create CD3 user directory
+      # ---------------------------------------------
+      - name: 'Create CD3 user directory'
+        run: |
+          echo "Creating cd3user directory"
+          rm -rf "${REPO_DIR}/cd3_automation_toolkit/cd3user"
+          mkdir -p "${REPO_DIR}/cd3_automation_toolkit/cd3user"
+          echo "CD3_USER_DIRECTORY=${REPO_DIR}/cd3_automation_toolkit/cd3user" >> $GITHUB_ENV
+          ls -lrth "${REPO_DIR}/cd3_automation_toolkit/cd3user"
+      # ---------------------------------------------
+      # Run CD3 extract
+      # ---------------------------------------------
+      - name: 'Run Create Tenancy Config'
+        run: |
+          
+          echo "${TENANCY_NAME}"
+          pwd
+          cd cd3_automation_toolkit/user-scripts
+          
+          sed -i "s|^tenancy_ocid=.*|tenancy_ocid=${{ secrets.TENANCY_OCID }}|" tenancyconfig.properties
+          sed -i "s|^region=.*|region=${{ secrets.REGION }}|" tenancyconfig.properties
+          sed -i "s|^user_ocid=.*|user_ocid=${{ secrets.USER_OCID }}|" tenancyconfig.properties
+          sed -i "s|^fingerprint=.*|fingerprint=${{ secrets.FINGERPRINT }}|" tenancyconfig.properties
+          sed -i "s|^prefix=.*|prefix=${TENANCY_NAME}|" tenancyconfig.properties
+          sed -i "s|^auth_mechanism=.*|auth_mechanism=api_key|" tenancyconfig.properties
+          sed -i "s|^key_path=.*|key_path=/home/ubuntu/.oci/key.pem|" tenancyconfig.properties
+          echo "Viewing tenancyconfig.properties file"
+          cat tenancyconfig.properties
+          chmod +x run_createTenancyConfig.exp
+          expect ./run_createTenancyConfig.exp "${CD3_USER_DIRECTORY}"
+
+          python createTenancyConfig.py tenancyconfig.properties --user-dir "${CD3_USER_DIRECTORY}"
+          echo "CD3_SETUP_PROPERTIES=${REPO_DIR}/cd3_automation_toolkit/cd3user/tenancies/${TENANCY_NAME}/${TENANCY_NAME}_setUpOCI.properties" >> $GITHUB_ENV
+          echo "CD3_SETUP_DIR=${REPO_DIR}/cd3_automation_toolkit/cd3user/tenancies/${TENANCY_NAME}" >> $GITHUB_ENV
+          # cd ..
+          ls -lrth
+          # cp ${REPO_DIR}/cd3_automation_toolkit/example/CD3-Blank-template.xlsx /home/runner/cd3user/tenancies/ebizoncloudllc/CD3-Blank-template.xlsx
+          # sed -i "s|^cd3file=.*|cd3file=/home/runner/cd3user/tenancies/ebizoncloudllc/CD3-Blank-template.xlsx|" /home/runner/cd3user/tenancies/ebizoncloudllc/ebizoncloudllc_setUpOCI.properties
+          # sed -i "s|^workflow_type=.*|workflow_type=export_resources|" /home/runner/cd3user/tenancies/ebizoncloudllc/ebizoncloudllc_setUpOCI.properties
+          # cat /home/runner/cd3user/tenancies/ebizoncloudllc/ebizoncloudllc_setUpOCI.properties
+          # python setUpOCI.py /home/runner/cd3user/tenancies/ebizoncloudllc/ebizoncloudllc_setUpOCI.properties
+
+
+      - name: 'Show CD3 Setup Properties'
+        run: |
+          echo "${CD3_SETUP_PROPERTIES}"
+          ls -lrth "${CD3_SETUP_DIR}"
+          cp "${REPO_DIR}/cd3_automation_toolkit/example/CD3-Blank-template.xlsx" "${CD3_SETUP_DIR}/CD3-Export-All-Resources.xlsx"
+          sed -i "s|^cd3file=.*|cd3file=${CD3_SETUP_DIR}/CD3-Export-All-Resources.xlsx|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^workflow_type=.*|workflow_type=export_resources|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^outdir=.*|outdir=${CD3_SETUP_DIR}/terraform_files|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^prefix=.*|prefix=${TENANCY_NAME}|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^auth_mechanism=.*|auth_mechanism=api_key|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^config_file=.*|config_file=${CD3_SETUP_DIR}/.config_files/${TENANCY_NAME}_oci_config|" "${CD3_SETUP_PROPERTIES}"
+          # sed -i "s|^config_file=.*|config_file=/home/runner/.oci/config.txt|" "${CD3_SETUP_PROPERTIES}"
+          sed -i "s|^tf_or_tofu=.*|tf_or_tofu=terraform|" "${CD3_SETUP_PROPERTIES}"
+          sudo chvt 1
+          cat "${CD3_SETUP_PROPERTIES}"
+
+
+      - name: 'Run CD3 Export Script with expect'
+        env:
+          TERM: dumb
+        run: |
+          
+          tty || echo "Not a tty"
+          echo "TERM=$TERM"
+          # env
+          cd cd3_automation_toolkit
+          pwd
+          chmod +x ./oci-setup.exp
+          echo "Running EXPECT Script"
+          # script -q -c "expect oci-setup.exp \"${CD3_SETUP_PROPERTIES}\"" /dev/null
+          # python3.9 setUpOCI.py "${CD3_SETUP_PROPERTIES}" || true
+          # script -q -c 'expect ./oci-setup.exp \"${CD3_SETUP_PROPERTIES}\"' /dev/null
+          # expect oci-setup.exp "${CD3_SETUP_PROPERTIES}"
+          expect run-setup.exp "${CD3_SETUP_PROPERTIES}" #comment
+ 
+          # python setUpOCI.py "${CD3_SETUP_PROPERTIES}"
+          cp "${CD3_SETUP_DIR}/CD3-Export-All-Resources.xlsx" "${REPO_DIR}/cd3_automation_toolkit" 
+
+      - name: Configure Git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit changes
+        run: |
+          git add "${REPO_DIR}/cd3_automation_toolkit/CD3-Export-All-Resources.xlsx"
+          git add "${REPO_DIR}/cd3_automation_toolkit/user-scripts/*"
+          git add "${REPO_DIR}/cd3_automation_toolkit/cd3user"
+          git diff --cached --quiet || git commit -m "ci: update cd3 file"
+
+      - name: Push changes to repo
+        run: |
+          # pushes to the same branch that triggered the workflow
+          git push origin HEAD:$BRANCH_NAME
+
+      # - name: Checkout repository
+      #   uses: actions/checkout@v4
+
+      # - name: Install dependencies
+      #   run: pip install pyopenssl
+
+      - name: Send email
+        env:
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          cd cd3_automation_toolkit
+          python mail.py \
+            --to "${{ secrets.EMAIL_ID }}" \
+            --subject "CD3 Export Completed" \
+            --body "Hi Please find the attached CD3 Export file for the tenancy ${TENANCY_NAME}.\n\nBest regards,\n AIAGENTS4BIZ Team" \
+            --attachments "${REPO_DIR}/cd3_automation_toolkit/CD3-Export-All-Resources.xlsx"
+
+
+      # - name: Debug File Output
+      #   run: |
+      #    echo "Looking for: /cd3user/tenancies/vishal/CD3-Blank-template.xlsx "
+      #    ls -lh /cd3user/tenancies/vishal
+
+      # - name: 'Upload CD3 Excel Output'
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: cd3-output
+      #     path: /cd3user/tenancies/vishal/CD3-Blank-template.xlsx 
+  
+      

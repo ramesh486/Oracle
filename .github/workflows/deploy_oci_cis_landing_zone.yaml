@@ -1,0 +1,64 @@
+
+# On pull request events, this workflow will run
+# `terraform init`, and `terraform plan`. On successful pull request merge, `terraform apply` will be executed.
+# Update PROVIDER_NAME, BRANCH_NAME, STACK_NAME, WORKING_DIRECTORY, REPO_URL, TF_VERSION
+
+name: 'Quickstart Deploy OCI CIS Landing Zone'
+on:
+  repository_dispatch:
+    types: [quickstart-oci-cis-landing-zone]
+  # pull_request:
+  #   types: [opened]
+  #   branches:
+  #     - 'dev'
+    # paths:
+    #   - 'CICD/stack02_networking/03.vcn_prod/*'
+
+# ---------------------------------------------
+# Permissions
+# ---------------------------------------------
+
+permissions:
+  contents: write
+  actions: read
+  
+
+jobs:
+  
+  ORM_STACK_QUICKSTART_OCI_CIS_LANDING_ZONE:
+    uses: ebizon-cloud-llc/oci_automation/.github/workflows/ai_agent_action_runner_v2.yaml@master
+
+    # ---------------------------------------------
+    # Source Provider Details
+    # ---------------------------------------------
+
+    with:
+
+      PROVIDER_NAME: "ai_agent_github_cicd"
+      BRANCH_NAME: "master"
+      STACK_NAME: "stack-ai-agent-${{ github.event.client_payload.stack_name }}"
+      WORKING_DIRECTORY: "${{ github.event.client_payload.working_directory }}"
+      REPO_URL: "${{ github.event.client_payload.repo_url }}" #"https://github.com/kirankumar-badiger/oci_automation.git"
+      TF_VERSION: "${{ github.event.client_payload.tf_version }}"
+      REGION: "${{ github.event.client_payload.tf_variables.region }}"
+
+      # TF_VERSION: "1.2.x"
+      # TF_JSON: ${{ github.event.inputs.client_payload }}
+
+    # ---------------------------------------------
+    # Secrets
+    # ---------------------------------------------
+
+    secrets:
+      USER_OCID: ${{secrets.USER_OCID}}
+      FINGERPRINT: ${{secrets.FINGERPRINT}}
+      COMPARTMENT_OCID: ${{secrets.COMPARTMENT_OCID}}
+      REGION: ${{secrets.REGION}}
+      TENANCY_OCID: ${{secrets.TENANCY_OCID}}
+      PRIVATE_KEY_FILE: ${{secrets.PRIVATE_KEY_FILE}}
+      PAT: ${{secrets.PAT}}
+      EMAIL_ID: ${{secrets.EMAIL_ID}}
+      SMTP_USERNAME: ${{secrets.SMTP_USERNAME}}
+      SMTP_PASSWORD: ${{secrets.SMTP_PASSWORD}}
+ 
+      
